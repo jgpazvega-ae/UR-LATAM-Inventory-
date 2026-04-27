@@ -1,47 +1,48 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
+import prestamoRoutes from './routes/prestamo.routes';
+import robotRoutes from './routes/robot.routes';
+import configuracionRoutes from './routes/configuracion.routes';
+import { iniciarCronJobs } from './services/notification.service';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
-// Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Routes (to be implemented)
-app.use('/api/auth', (req, res) => {
-  res.json({ message: 'Auth routes coming soon' });
-});
+app.use('/api/auth', authRoutes);
+app.use('/api/usuarios', userRoutes);
+app.use('/api/prestamos', prestamoRoutes);
+app.use('/api/robots', robotRoutes);
+app.use('/api/configuracion', configuracionRoutes);
 
-app.use('/api/robots', (req, res) => {
-  res.json({ message: 'Robot routes coming soon' });
-});
-
-app.use('/api/prestamos', (req, res) => {
-  res.json({ message: 'Loan routes coming soon' });
-});
-
-app.use('/api/usuarios', (req, res) => {
-  res.json({ message: 'User routes coming soon' });
-});
-
-// Error handling
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
-  res.status(500).json({ error: 'Internal server error' });
+  res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+app.listen(PORT, async () => {
+  console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
+
+  if (process.env.NODE_ENV !== 'test') {
+    try {
+      await iniciarCronJobs();
+      console.log('✅ Cron jobs iniciados');
+    } catch (err) {
+      console.error('⚠️ Error iniciando cron jobs:', err);
+    }
+  }
 });

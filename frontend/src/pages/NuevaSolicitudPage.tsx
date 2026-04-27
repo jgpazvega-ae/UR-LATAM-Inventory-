@@ -1,0 +1,326 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { robotService } from '../services/robot.service'
+import { userService } from '../services/user.service'
+import { prestamoService } from '../services/prestamo.service'
+import { configuracionService } from '../services/configuracion.service'
+
+const PASOS = ['Familia', 'Robots', 'Fechas', 'Distribuidor', 'Motivo', 'Confirmar']
+
+export default function NuevaSolicitudPage() {
+  const navigate = useNavigate()
+  const [paso, setPaso] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Datos del wizard
+  const [familias, setFamilias] = useState<any[]>([])
+  const [robots, setRobots] = useState<any[]>([])
+  const [distribuidores, setDistribuidores] = useState<any[]>([])
+  const [diasMin, setDiasMin] = useState(7)
+
+  // Selecciones
+  const [familiaId, setFamiliaId] = useState('')
+  const [robotsSeleccionados, setRobotsSeleccionados] = useState<any[]>([])
+  const [fechaInicio, setFechaInicio] = useState('')
+  const [fechaFin, setFechaFin] = useState('')
+  const [distribuidorId, setDistribuidorId] = useState('')
+  const [motivo, setMotivo] = useState('')
+
+  const fechaMinima = new Date()
+  fechaMinima.setDate(fechaMinima.getDate() + diasMin)
+  const fechaMinimaStr = fechaMinima.toISOString().split('T')[0]
+
+  useEffect(() => {
+    const cargar = async () => {
+      try {
+        const [fams, dists, config] = await Promise.all([
+          robotService.listarFamilias(),
+          userService.listarDistribuidores(),
+          configuracionService.obtener(),
+        ])
+        setFamilias(fams)
+        setDistribuidores(dists)
+        if (config?.diasMinimosAnticipacion) setDiasMin(config.diasMinimosAnticipacion)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    cargar()
+  }, [])
+
+  useEffect(() => {
+    if (familiaId) {
+      robotService.listar({ familiaId, disponibles: true }).then(setRobots)
+    }
+  }, [familiaId])
+
+  const toggleRobot = (robot: any) => {
+    if (robotsSeleccionados.find(r => r.id === robot.id)) {
+      setRobotsSeleccionados(robotsSeleccionados.filter(r => r.id !== robot.id))
+    } else {
+      setRobotsSeleccionados([...robotsSeleccionados, robot])
+    }
+  }
+
+  const puedeAvanzar = () => {
+    switch (paso) {
+      case 0: return !!familiaId
+      case 1: return robotsSeleccionados.length > 0
+      case 2: return !!fechaInicio && !!fechaFin && new Date(fechaInicio) >= fechaMinima && new Date(fechaFin) > new Date(fechaInicio)
+      case 3: return !!distribuidorId
+      case 4: return motivo.length >= 10
+      default: return true
+    }
+  }
+
+  const enviar = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      await prestamoService.crear({
+        robotIds: robotsSeleccionados.map(r => r.id),
+        distribuidorId,
+        fechaInicio,
+        fechaFin,
+        motivo,
+      })
+      navigate('/solicitudes')
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Error al crear solicitud')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const diasDuracion = fechaInicio && fechaFin
+    ? Math.ceil((new Date(fechaFin).getTime() - new Date(fechaInicio).getTime()) / (1000 * 60 * 60 * 24))
+    : 0
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Nueva Solicitud de Demo</h1>
+        <p className="text-gray-600 mt-1">Paso {paso + 1} de {PASOS.length}: {PASOS[paso]}</p>
+      </div>
+
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-2 border-b bg-gray-50">
+          <div className="flex">
+            {PASOS.map((nombre, i) => (
+              <div
+                key={i}
+                className={`flex-1 text-center py-2 text-xs font-medium ${
+                  i === paso ? 'text-teradyne-secondary' : i < paso ? 'text-green-600' : 'text-gray-400'
+                }`}
+              >
+                {i < paso ? '✓ ' : ''}{nombre}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-8 min-h-[400px]">
+          {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">{error}</div>}
+
+          {paso === 0 && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Selecciona la familia de robot</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {familias.map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => { setFamiliaId(f.id); setRobotsSeleccionados([]) }}
+                    className={`p-4 border-2 rounded-lg text-left transition ${
+                      familiaId === f.id ? 'border-teradyne-secondary bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="font-semibold text-gray-900">{f.nombreFamilia}</div>
+                    <div className="text-sm text-gray-500 mt-1">{f._count?.robots || 0} robots</div>
+                    {f.descripcion && <div className="text-xs text-gray-600 mt-2">{f.descripcion}</div>}
+                  </button>
+                ))}
+                {familias.length === 0 && (
+                  <div className="col-span-2 text-center text-gray-500 py-8">
+                    No hay familias de robots configuradas. Contacta al administrador.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {paso === 1 && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Selecciona los robots</h2>
+              <p className="text-sm text-gray-600 mb-4">Robots disponibles en familia seleccionada</p>
+              <div className="space-y-2">
+                {robots.length === 0 && (
+                  <div className="text-center text-gray-500 py-8">
+                    No hay robots disponibles en esta familia
+                  </div>
+                )}
+                {robots.map(r => {
+                  const seleccionado = robotsSeleccionados.find(rs => rs.id === r.id)
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => toggleRobot(r)}
+                      className={`w-full p-3 border-2 rounded-lg text-left transition flex items-center justify-between ${
+                        seleccionado ? 'border-teradyne-secondary bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-semibold">{r.numeroSerie}</div>
+                        <div className="text-sm text-gray-500">{r.modelo} - {r.ubicacionActual || 'Sin ubicación'}</div>
+                      </div>
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        seleccionado ? 'bg-teradyne-secondary border-teradyne-secondary text-white' : 'border-gray-300'
+                      }`}>
+                        {seleccionado && '✓'}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+              {robotsSeleccionados.length > 0 && (
+                <div className="mt-4 p-3 bg-blue-50 rounded">
+                  <strong>{robotsSeleccionados.length}</strong> robot(s) seleccionado(s)
+                </div>
+              )}
+            </div>
+          )}
+
+          {paso === 2 && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Fechas de préstamo</h2>
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4 text-sm text-yellow-800">
+                ⚠️ <strong>Mínimo {diasMin} días de anticipación.</strong> Fecha mínima: {new Date(fechaMinimaStr).toLocaleDateString('es-ES')}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de inicio</label>
+                  <input
+                    type="date"
+                    value={fechaInicio}
+                    min={fechaMinimaStr}
+                    onChange={(e) => setFechaInicio(e.target.value)}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de fin</label>
+                  <input
+                    type="date"
+                    value={fechaFin}
+                    min={fechaInicio || fechaMinimaStr}
+                    onChange={(e) => setFechaFin(e.target.value)}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                  />
+                </div>
+              </div>
+              {diasDuracion > 0 && (
+                <div className="mt-4 text-sm text-gray-600">
+                  Duración: <strong>{diasDuracion} días</strong>
+                </div>
+              )}
+            </div>
+          )}
+
+          {paso === 3 && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Distribuidor</h2>
+              <div className="space-y-2">
+                {distribuidores.map((d: any) => (
+                  <button
+                    key={d.id}
+                    onClick={() => setDistribuidorId(d.id)}
+                    className={`w-full p-3 border-2 rounded-lg text-left transition ${
+                      distribuidorId === d.id ? 'border-teradyne-secondary bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="font-semibold">{d.nombre}</div>
+                    {d.contactoPrincipal && <div className="text-sm text-gray-500">{d.contactoPrincipal}</div>}
+                  </button>
+                ))}
+                {distribuidores.length === 0 && (
+                  <div className="text-center text-gray-500 py-8">No hay distribuidores</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {paso === 4 && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Motivo de la solicitud</h2>
+              <p className="text-sm text-gray-600 mb-4">Describe el propósito del préstamo (mínimo 10 caracteres)</p>
+              <textarea
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                rows={6}
+                maxLength={500}
+                className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                placeholder="Ej: Demostración a cliente XYZ para evaluar automatización en línea de ensamblaje..."
+              />
+              <div className="text-right text-xs text-gray-500 mt-1">
+                {motivo.length}/500 caracteres
+              </div>
+            </div>
+          )}
+
+          {paso === 5 && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Revisión final</h2>
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded">
+                  <div className="text-xs font-semibold text-gray-500 mb-1">ROBOTS</div>
+                  <div>{robotsSeleccionados.map(r => `${r.numeroSerie} (${r.modelo || ''})`).join(', ')}</div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded">
+                  <div className="text-xs font-semibold text-gray-500 mb-1">PERÍODO</div>
+                  <div>{new Date(fechaInicio).toLocaleDateString('es-ES')} - {new Date(fechaFin).toLocaleDateString('es-ES')} ({diasDuracion} días)</div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded">
+                  <div className="text-xs font-semibold text-gray-500 mb-1">DISTRIBUIDOR</div>
+                  <div>{distribuidores.find(d => d.id === distribuidorId)?.nombre}</div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded">
+                  <div className="text-xs font-semibold text-gray-500 mb-1">MOTIVO</div>
+                  <div>{motivo}</div>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded text-sm text-blue-900">
+                  ✉️ Al confirmar, se enviará notificación al gerente de ventas para aprobación.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 border-t bg-gray-50 flex justify-between">
+          <button
+            onClick={() => paso === 0 ? navigate('/solicitudes') : setPaso(paso - 1)}
+            className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded transition"
+          >
+            ← {paso === 0 ? 'Cancelar' : 'Atrás'}
+          </button>
+          {paso < PASOS.length - 1 ? (
+            <button
+              onClick={() => setPaso(paso + 1)}
+              disabled={!puedeAvanzar()}
+              className="px-6 py-2 bg-teradyne-secondary hover:bg-blue-600 text-white rounded font-medium transition disabled:opacity-50"
+            >
+              Siguiente →
+            </button>
+          ) : (
+            <button
+              onClick={enviar}
+              disabled={loading}
+              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium transition disabled:opacity-50"
+            >
+              {loading ? 'Enviando...' : 'Confirmar Solicitud'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
