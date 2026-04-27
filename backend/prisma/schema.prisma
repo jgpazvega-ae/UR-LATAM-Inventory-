@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id                String    @id @default(cuid())
+  username          String    @unique
+  email             String    @unique
+  passwordHash      String
+  nombreCompleto    String
+  rol               Rol       @default(VENDEDOR)
+  activo            Boolean   @default(false)
+  distribuidorId    String?
+  distribuidor      Distribuidor? @relation(fields: [distribuidorId], references: [id])
+  fechaCreacion     DateTime  @default(now())
+  fechaUltimoLogin  DateTime?
+  fechaModificacion DateTime  @updatedAt
+
+  // Relaciones
+  solicitudesCreadas     Prestamo[] @relation("solicitante")
+  solicitudesAprobadas   Prestamo[] @relation("aprobador")
+  salidaConfirmadas      Prestamo[] @relation("servicioSalida")
+  recepcionConfirmadas   Prestamo[] @relation("servicioRecepcion")
+
+  @@map("usuarios")
+}
+
+model Distribuidor {
+  id                String    @id @default(cuid())
+  nombre            String    @unique
+  contactoPrincipal String?
+  correo            String?
+  telefono          String?
+  fechaCreacion     DateTime  @default(now())
+  fechaModificacion DateTime  @updatedAt
+
+  usuarios  Usuario[]
+  prestamos Prestamo[]
+
+  @@map("distribuidores")
+}
+
+model FamiliaRobot {
+  id            String   @id @default(cuid())
+  nombreFamilia String   @unique
+  descripcion   String?
+  fechaCreacion DateTime @default(now())
+
+  robots Robot[]
+
+  @@map("familias_robots")
+}
+
+model Robot {
+  id                     String    @id @default(cuid())
+  numeroSerie            String    @unique
+  familiaId              String
+  familia                FamiliaRobot @relation(fields: [familiaId], references: [id])
+  modelo                 String?
+  estado                 EstadoRobot @default(DISPONIBLE)
+  ubicacionActual        String?
+  fechaAdquisicion       DateTime?
+  notas                  String?
+  fechaUltimaActualizacion DateTime @updatedAt
+
+  detallesPrestamo DetallePrestamoRobot[]
+
+  @@map("robots")
+}
+
+model Prestamo {
+  id                       String    @id @default(cuid())
+  numeroSolicitud          String    @unique
+  usuarioSolicitanteId     String
+  usuarioSolicitante       Usuario   @relation("solicitante", fields: [usuarioSolicitanteId], references: [id])
+  distribuidorId           String
+  distribuidor             Distribuidor @relation(fields: [distribuidorId], references: [id])
+  fechaInioSolicitada      DateTime
+  fechaFinSolicitada       DateTime
+  motivo                   String
+  estado                   EstadoPrestamo @default(PENDIENTE_APROBACION)
+  estadoSalida             EstadoConfirmacion?
+  estadoRecepcion          EstadoConfirmacion?
+  fechaSalidaReal          DateTime?
+  fechaRecepcionReal       DateTime?
+  usuarioServicioSalidaId  String?
+  usuarioServicioSalida    Usuario? @relation("servicioSalida", fields: [usuarioServicioSalidaId], references: [id])
+  usuarioServicioRecepcionId String?
+  usuarioServicioRecepcion Usuario? @relation("servicioRecepcion", fields: [usuarioServicioRecepcionId], references: [id])
+  fechaCreacion            DateTime  @default(now())
+  fechaAprobacion          DateTime?
+  usuarioAprobadorId       String?
+  usuarioAprobador         Usuario?  @relation("aprobador", fields: [usuarioAprobadorId], references: [id])
+  fechaModificacion        DateTime  @updatedAt
+
+  detalles DetallePrestamoRobot[]
+
+  @@map("prestamos")
+}
+
+model DetallePrestamoRobot {
+  id            String   @id @default(cuid())
+  prestamoId    String
+  prestamo      Prestamo @relation(fields: [prestamoId], references: [id], onDelete: Cascade)
+  robotId       String
+  robot         Robot    @relation(fields: [robotId], references: [id])
+  orden         Int
+  fechaAgregado DateTime @default(now())
+
+  @@map("detalles_prestamo_robots")
+}
+
+model Configuracion {
+  id                        String   @id @default(cuid())
+  diasMinimosAnticipacion   Int      @default(7)
+  diasVencimientoAlerta     Int      @default(7)
+  correoAdminPrincipal      String
+  correoAdminCopia1         String?
+  correoAdminCopia2         String?
+  horariosNotificacion      String   @default("[\"08:00\", \"12:00\", \"16:00\"]")
+  estadoSistema             EstadoSistema @default(ACTIVO)
+  fechaCreacion             DateTime @default(now())
+  fechaModificacion         DateTime @updatedAt
+
+  @@map("configuracion")
+}
+
+enum Rol {
+  VENDEDOR
+  GERENTE_VENTAS
+  SERVICIO
+  ADMIN
+}
+
+enum EstadoRobot {
+  DISPONIBLE
+  EN_PRESTAMO
+  MANTENIMIENTO
+  RETIRADO
+}
+
+enum EstadoPrestamo {
+  PENDIENTE_APROBACION
+  APROBADO
+  RECHAZADO
+  ACTIVO
+  COMPLETADO
+  VENCIDO
+}
+
+enum EstadoConfirmacion {
+  CONFIRMADO
+  RECHAZADO
+}
+
+enum EstadoSistema {
+  ACTIVO
+  MANTENIMIENTO
+}
