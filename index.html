@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teradyne Robotics - Inventario UR LATAM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .teradyne-primary { background-color: #003a70; }
+    .teradyne-primary-text { color: #003a70; }
+    .teradyne-secondary { background-color: #0078d4; }
+    .teradyne-secondary-hover:hover { background-color: #005fa3; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .modal-backdrop { backdrop-filter: blur(4px); }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <!-- LOGIN VIEW -->
+  <div id="loginView" class="min-h-screen flex items-center justify-center p-4 hidden">
+    <div class="max-w-md w-full">
+      <div class="bg-white rounded-2xl shadow-2xl p-8">
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl teradyne-primary text-white text-3xl font-bold mb-4">T</div>
+          <h1 class="text-3xl font-bold teradyne-primary-text">Teradyne Robotics</h1>
+          <p class="text-gray-600 mt-2">Sistema de Inventario UR LATAM</p>
+        </div>
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <select id="loginEmail" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="">Selecciona usuario...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+            <input id="loginPassword" type="password" value="password123" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <p class="text-xs text-gray-500 mt-1">Demo: <span class="font-mono">password123</span> para todos</p>
+          </div>
+          <button type="submit" class="w-full teradyne-secondary teradyne-secondary-hover text-white font-semibold py-2.5 rounded-lg transition">
+            Iniciar Sesión
+          </button>
+        </form>
+        <div id="loginError" class="hidden mt-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm"></div>
+      </div>
+      <p class="text-center text-xs text-gray-500 mt-4">© 2024 Teradyne Robotics · Demo estático</p>
+    </div>
+  </div>
+
+  <!-- APP VIEW -->
+  <div id="appView" class="hidden">
+    <!-- Header -->
+    <header class="teradyne-primary text-white shadow-lg">
+      <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-white teradyne-primary-text rounded-lg flex items-center justify-center text-xl font-bold">T</div>
+          <div>
+            <h1 class="text-xl font-bold">Teradyne Robotics</h1>
+            <p class="text-xs text-blue-200">Sistema de Inventario UR LATAM</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="text-right hidden sm:block">
+            <p id="userName" class="text-sm font-semibold"></p>
+            <p id="userRole" class="text-xs text-blue-200"></p>
+          </div>
+          <button id="logoutBtn" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm transition">Salir</button>
+        </div>
+      </div>
+      <nav class="bg-blue-900/30">
+        <div class="max-w-7xl mx-auto px-4 flex gap-1 overflow-x-auto">
+          <button data-tab="dashboard" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5 whitespace-nowrap">📊 Dashboard</button>
+          <button data-tab="robots" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5 whitespace-nowrap">🤖 Robots</button>
+          <button data-tab="usuarios" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5 whitespace-nowrap">👥 Usuarios</button>
+        </div>
+      </nav>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 sm:p-6">
+      <div id="alertContainer"></div>
+
+      <!-- Dashboard Tab -->
+      <section id="tab-dashboard" class="hidden">
+        <h2 class="text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
+        <p class="text-gray-600 mb-6">Resumen del inventario de robots</p>
+        <div id="dashboardStats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+        <div class="bg-white rounded-xl shadow p-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Distribución por Familia</h3>
+          <div id="familyChart" class="space-y-3"></div>
+        </div>
+      </section>
+
+      <!-- Robots Tab -->
+      <section id="tab-robots" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div>
+            <h2 class="text-3xl font-bold text-gray-900">Inventario de Robots</h2>
+            <p class="text-gray-600 mt-1"><span id="robotCount">0</span> robots en el sistema</p>
+          </div>
+          <button id="newRobotBtn" class="hidden teradyne-secondary teradyne-secondary-hover text-white px-4 py-2 rounded-lg font-medium transition">
+            + Nuevo Robot
+          </button>
+        </div>
+
+        <div class="flex flex-wrap gap-3 mb-4">
+          <select id="filterFamilia" class="px-3 py-2 border rounded-lg bg-white">
+            <option value="">Todas las familias</option>
+          </select>
+          <select id="filterEstado" class="px-3 py-2 border rounded-lg bg-white">
+            <option value="">Todos los estados</option>
+            <option value="DISPONIBLE">Disponibles</option>
+            <option value="EN_PRESTAMO">En Préstamo</option>
+            <option value="MANTENIMIENTO">Mantenimiento</option>
+            <option value="RETIRADO">Retirados</option>
+          </select>
+          <input id="filterSearch" type="text" placeholder="Buscar por serie o modelo..." class="px-3 py-2 border rounded-lg bg-white flex-1 min-w-[200px]">
+        </div>
+
+        <div class="bg-white rounded-xl shadow overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">N° Serie</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Modelo</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Familia</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ubicación</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Estado</th>
+                  <th id="actionsHeader" class="hidden px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="robotsTableBody" class="divide-y divide-gray-200"></tbody>
+            </table>
+          </div>
+          <div id="robotsEmpty" class="hidden p-8 text-center text-gray-500">No hay robots que coincidan con los filtros.</div>
+        </div>
+      </section>
+
+      <!-- Usuarios Tab -->
+      <section id="tab-usuarios" class="hidden">
+        <h2 class="text-3xl font-bold text-gray-900 mb-2">Usuarios del Sistema</h2>
+        <p class="text-gray-600 mb-6"><span id="userCount">0</span> usuarios registrados</p>
+        <div class="bg-white rounded-xl shadow overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nombre</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Rol</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody" class="divide-y divide-gray-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal Robot -->
+  <div id="robotModal" class="hidden fixed inset-0 bg-black/50 modal-backdrop flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b">
+        <h2 id="modalTitle" class="text-xl font-bold text-gray-900">Nuevo Robot</h2>
+      </div>
+      <form id="robotForm" class="p-6 space-y-4">
+        <input type="hidden" id="robotId">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Número de Serie *</label>
+          <input id="formNumeroSerie" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+            <input id="formModelo" type="text" placeholder="UR10e" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Familia *</label>
+            <select id="formFamilia" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="">Selecciona...</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+            <select id="formEstado" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="DISPONIBLE">Disponible</option>
+              <option value="EN_PRESTAMO">En Préstamo</option>
+              <option value="MANTENIMIENTO">Mantenimiento</option>
+              <option value="RETIRADO">Retirado</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
+            <input id="formUbicacion" type="text" placeholder="Almacén..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-4 border-t">
+          <button type="button" id="cancelModal" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+          <button type="submit" class="px-4 py-2 teradyne-secondary teradyne-secondary-hover text-white rounded-lg font-medium transition">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ============ DATOS INICIALES ============
+    const INITIAL_USERS = [
+      { id: 'u1', email: 'admin@teradyne-robotics.com', nombre: 'Administrador Sistema', rol: 'ADMIN' },
+      { id: 'u2', email: 'uriel.fraire@teradyne-robotics.com', nombre: 'Uriel Fraire', rol: 'GERENTE_VENTAS' },
+      { id: 'u3', email: 'ximena.lama@teradyne-robotics.com', nombre: 'Ximena Lama', rol: 'VENDEDOR' },
+      { id: 'u4', email: 'emmanuel.ponce@teradyne-robotics.com', nombre: 'Emmanuel Ponce', rol: 'VENDEDOR' },
+      { id: 'u5', email: 'miguel.lopez@teradyne-robotics.com', nombre: 'Miguel Lopez', rol: 'VENDEDOR' },
+      { id: 'u6', email: 'jesus.coronado@teradyne-robotics.com', nombre: 'Jesus Coronado', rol: 'VENDEDOR' },
+      { id: 'u7', email: 'maria.salcido@teradyne-robotics.com', nombre: 'Maria Salcido', rol: 'VENDEDOR' },
+      { id: 'u8', email: 'jose-giovanny.paz@teradyne-robotics.com', nombre: 'Giovanny Paz', rol: 'SERVICIO' },
+      { id: 'u9', email: 'vinicius.bueno-santos@teradyne-robotics.com', nombre: 'Vinicius Bueno Santos', rol: 'SERVICIO' },
+    ];
+
+    const INITIAL_FAMILIAS = [
+      { id: 'f1', nombre: 'CB3', descripcion: 'Universal Robots Serie CB3' },
+      { id: 'f2', nombre: 'Serie E', descripcion: 'Universal Robots Serie E (e-Series)' },
+      { id: 'f3', nombre: 'UR SERIES', descripcion: 'Universal Robots Series modernos' },
+      { id: 'f4', nombre: 'MIR', descripcion: 'Mobile Industrial Robots' },
+    ];
+
+    const mapEstado = (s) => s === 1 ? 'MANTENIMIENTO' : s === 2 ? 'EN_PRESTAMO' : 'DISPONIBLE';
+
+    const INITIAL_ROBOTS = [
+      { numeroSerie: '2017307415', modelo: 'UR10', familia: 'CB3', estado: 0 },
+      { numeroSerie: '2017304770', modelo: 'UR10', familia: 'CB3', estado: 0 },
+      { numeroSerie: '20205000857', modelo: 'UR10e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20185000448', modelo: 'UR10e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20205000065', modelo: 'UR10e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20195000435', modelo: 'UR10e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20195000437', modelo: 'UR10e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20245201849', modelo: 'UR10e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20245201848', modelo: 'UR10e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20195600044', modelo: 'UR16e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20195600055', modelo: 'UR16e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20236800042', modelo: 'UR20', familia: 'UR SERIES', estado: 0 },
+      { numeroSerie: '20236900015', modelo: 'UR30', familia: 'UR SERIES', estado: 1 },
+      { numeroSerie: '20245300066', modelo: 'UR3e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20245300067', modelo: 'UR3e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20245300068', modelo: 'UR3e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20245300069', modelo: 'UR3e', familia: 'Serie E', estado: 2 },
+      { numeroSerie: '20245300072', modelo: 'UR3e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20185300261', modelo: 'UR3e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20185300069', modelo: 'UR3e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20185300166', modelo: 'UR3e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20225300808', modelo: 'UR3e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20225300809', modelo: 'UR3e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '2014350019', modelo: 'UR5', familia: 'CB3', estado: 2 },
+      { numeroSerie: '2015350493', modelo: 'UR5', familia: 'CB3', estado: 2 },
+      { numeroSerie: '2014350170', modelo: 'UR5', familia: 'CB3', estado: 1 },
+      { numeroSerie: '2017354571', modelo: 'UR5', familia: 'CB3', estado: 1 },
+      { numeroSerie: '2017354952', modelo: 'UR5', familia: 'CB3', estado: 1 },
+      { numeroSerie: '20185500087', modelo: 'UR5e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20185500391', modelo: 'UR5e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20215500637', modelo: 'UR5e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20205500581', modelo: 'UR5e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20245501188', modelo: 'UR5e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20245501192', modelo: 'UR5e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20185500347', modelo: 'UR5e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20185000102', modelo: 'UR10e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '2017354951', modelo: 'UR5', familia: 'CB3', estado: 0 },
+      { numeroSerie: '20205501629', modelo: 'UR5e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20255700158', modelo: 'UR7e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20245202818', modelo: 'UR10e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '20255100168', modelo: 'UR12e', familia: 'Serie E', estado: 0 },
+      { numeroSerie: '202556601046', modelo: 'UR8L', familia: 'UR SERIES', estado: 0 },
+      { numeroSerie: '20256700137', modelo: 'UR15', familia: 'UR SERIES', estado: 0 },
+      { numeroSerie: '20256700138', modelo: 'UR15', familia: 'UR SERIES', estado: 0 },
+      { numeroSerie: 'MIR-250-SHELF', modelo: 'MIR 250 SHELF', familia: 'MIR', estado: 0 },
+      { numeroSerie: 'MIR-250-HOOK', modelo: 'MIR250 HOOK', familia: 'MIR', estado: 0 },
+      { numeroSerie: 'MIR-1200-PALLET', modelo: 'MIR 1200 PALLET JACK', familia: 'MIR', estado: 0 },
+      { numeroSerie: 'MIR-1350-LIFT', modelo: 'MIR 1350 PALLET LIFT', familia: 'MIR', estado: 0 },
+      { numeroSerie: 'MC-250', modelo: 'MC 250', familia: 'MIR', estado: 0 },
+    ];
+
+    // ============ STORAGE ============
+    const STORAGE_KEY = 'teradyne_inventory_v1';
+
+    function loadStore() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try { return JSON.parse(raw); } catch (e) {}
+      }
+      const robots = INITIAL_ROBOTS.map((r, i) => ({
+        id: 'r' + (i + 1),
+        numeroSerie: r.numeroSerie,
+        modelo: r.modelo,
+        familiaId: INITIAL_FAMILIAS.find(f => f.nombre === r.familia)?.id || 'f1',
+        estado: mapEstado(r.estado),
+        ubicacion: '',
+      }));
+      const store = { users: INITIAL_USERS, familias: INITIAL_FAMILIAS, robots };
+      saveStore(store);
+      return store;
+    }
+
+    function saveStore(s) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    }
+
+    let store = loadStore();
+    let currentUser = null;
+    let editingRobotId = null;
+
+    // ============ AUTH ============
+    function getCurrentUser() {
+      const raw = sessionStorage.getItem('teradyne_user');
+      return raw ? JSON.parse(raw) : null;
+    }
+
+    function login(email, password) {
+      if (password !== 'password123') return null;
+      const user = store.users.find(u => u.email === email);
+      if (!user) return null;
+      sessionStorage.setItem('teradyne_user', JSON.stringify(user));
+      return user;
+    }
+
+    function logout() {
+      sessionStorage.removeItem('teradyne_user');
+      currentUser = null;
+      showLogin();
+    }
+
+    function canEdit() {
+      return currentUser && (currentUser.rol === 'ADMIN' || currentUser.rol === 'SERVICIO');
+    }
+
+    // ============ UI ============
+    function showLogin() {
+      document.getElementById('loginView').classList.remove('hidden');
+      document.getElementById('appView').classList.add('hidden');
+      const sel = document.getElementById('loginEmail');
+      sel.innerHTML = '<option value="">Selecciona usuario...</option>' +
+        store.users.map(u => `<option value="${u.email}">${u.nombre} (${u.rol})</option>`).join('');
+    }
+
+    function showApp() {
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('appView').classList.remove('hidden');
+      document.getElementById('userName').textContent = currentUser.nombre;
+      document.getElementById('userRole').textContent = currentUser.rol;
+      if (canEdit()) {
+        document.getElementById('newRobotBtn').classList.remove('hidden');
+        document.getElementById('actionsHeader').classList.remove('hidden');
+      } else {
+        document.getElementById('newRobotBtn').classList.add('hidden');
+        document.getElementById('actionsHeader').classList.add('hidden');
+      }
+      switchTab('dashboard');
+    }
+
+    function switchTab(tab) {
+      ['dashboard', 'robots', 'usuarios'].forEach(t => {
+        document.getElementById('tab-' + t).classList.add('hidden');
+      });
+      document.getElementById('tab-' + tab).classList.remove('hidden');
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        if (b.dataset.tab === tab) {
+          b.classList.add('border-white', 'bg-white/10');
+        } else {
+          b.classList.remove('border-white', 'bg-white/10');
+        }
+      });
+      if (tab === 'dashboard') renderDashboard();
+      if (tab === 'robots') renderRobots();
+      if (tab === 'usuarios') renderUsers();
+    }
+
+    function showAlert(msg, tipo = 'success') {
+      const c = document.getElementById('alertContainer');
+      const cls = tipo === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
+      c.innerHTML = `<div class="fade-in mb-4 px-4 py-3 border ${cls} rounded-lg">${msg}</div>`;
+      setTimeout(() => { c.innerHTML = ''; }, 3000);
+    }
+
+    // ============ DASHBOARD ============
+    function renderDashboard() {
+      const stats = {
+        total: store.robots.length,
+        disponibles: store.robots.filter(r => r.estado === 'DISPONIBLE').length,
+        prestamo: store.robots.filter(r => r.estado === 'EN_PRESTAMO').length,
+        mantenimiento: store.robots.filter(r => r.estado === 'MANTENIMIENTO').length,
+      };
+      const cards = [
+        { label: 'Total Robots', value: stats.total, color: 'bg-blue-500', icon: '🤖' },
+        { label: 'Disponibles', value: stats.disponibles, color: 'bg-green-500', icon: '✅' },
+        { label: 'En Préstamo', value: stats.prestamo, color: 'bg-orange-500', icon: '📦' },
+        { label: 'Mantenimiento', value: stats.mantenimiento, color: 'bg-yellow-500', icon: '🔧' },
+      ];
+      document.getElementById('dashboardStats').innerHTML = cards.map(c => `
+        <div class="bg-white rounded-xl shadow p-5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-600">${c.label}</span>
+            <span class="text-2xl">${c.icon}</span>
+          </div>
+          <p class="text-3xl font-bold text-gray-900">${c.value}</p>
+        </div>
+      `).join('');
+
+      const total = store.robots.length;
+      const familyChart = document.getElementById('familyChart');
+      familyChart.innerHTML = store.familias.map(f => {
+        const count = store.robots.filter(r => r.familiaId === f.id).length;
+        const pct = total ? Math.round((count / total) * 100) : 0;
+        return `
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="font-medium text-gray-700">${f.nombre}</span>
+              <span class="text-gray-500">${count} robots (${pct}%)</span>
+            </div>
+            <div class="bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div class="teradyne-secondary h-full rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ============ ROBOTS ============
+    const estadoBadge = {
+      DISPONIBLE: 'bg-green-100 text-green-800',
+      EN_PRESTAMO: 'bg-blue-100 text-blue-800',
+      MANTENIMIENTO: 'bg-orange-100 text-orange-800',
+      RETIRADO: 'bg-gray-100 text-gray-800',
+    };
+
+    function renderRobots() {
+      const familiaFilter = document.getElementById('filterFamilia');
+      if (familiaFilter.children.length === 1) {
+        familiaFilter.innerHTML = '<option value="">Todas las familias</option>' +
+          store.familias.map(f => `<option value="${f.id}">${f.nombre}</option>`).join('');
+      }
+
+      const fFam = document.getElementById('filterFamilia').value;
+      const fEst = document.getElementById('filterEstado').value;
+      const fSearch = document.getElementById('filterSearch').value.toLowerCase().trim();
+
+      let robots = store.robots;
+      if (fFam) robots = robots.filter(r => r.familiaId === fFam);
+      if (fEst) robots = robots.filter(r => r.estado === fEst);
+      if (fSearch) robots = robots.filter(r =>
+        r.numeroSerie.toLowerCase().includes(fSearch) ||
+        (r.modelo || '').toLowerCase().includes(fSearch)
+      );
+
+      document.getElementById('robotCount').textContent = store.robots.length;
+      const body = document.getElementById('robotsTableBody');
+      const empty = document.getElementById('robotsEmpty');
+
+      if (robots.length === 0) {
+        body.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      const showActions = canEdit();
+      body.innerHTML = robots.map(r => {
+        const familia = store.familias.find(f => f.id === r.familiaId);
+        return `
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 font-mono font-semibold text-sm text-gray-900">${r.numeroSerie}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">${r.modelo || '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">${familia?.nombre || '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">${r.ubicacion || '-'}</td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-1 rounded-full text-xs font-medium ${estadoBadge[r.estado] || 'bg-gray-100'}">${r.estado.replace('_', ' ')}</span>
+            </td>
+            ${showActions ? `
+              <td class="px-4 py-3 text-right text-sm space-x-2 whitespace-nowrap">
+                <button data-edit="${r.id}" class="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+                <button data-delete="${r.id}" class="text-red-600 hover:text-red-800 font-medium">Eliminar</button>
+              </td>` : ''}
+          </tr>
+        `;
+      }).join('');
+
+      body.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => openRobotModal(btn.dataset.edit));
+      });
+      body.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', () => deleteRobot(btn.dataset.delete));
+      });
+    }
+
+    function openRobotModal(id) {
+      if (!canEdit()) { showAlert('No tienes permisos para editar', 'error'); return; }
+      editingRobotId = id || null;
+
+      const famSel = document.getElementById('formFamilia');
+      famSel.innerHTML = '<option value="">Selecciona...</option>' +
+        store.familias.map(f => `<option value="${f.id}">${f.nombre}</option>`).join('');
+
+      if (id) {
+        const r = store.robots.find(x => x.id === id);
+        if (!r) return;
+        document.getElementById('modalTitle').textContent = 'Editar Robot';
+        document.getElementById('robotId').value = r.id;
+        document.getElementById('formNumeroSerie').value = r.numeroSerie;
+        document.getElementById('formNumeroSerie').disabled = true;
+        document.getElementById('formModelo').value = r.modelo || '';
+        document.getElementById('formFamilia').value = r.familiaId;
+        document.getElementById('formEstado').value = r.estado;
+        document.getElementById('formUbicacion').value = r.ubicacion || '';
+      } else {
+        document.getElementById('modalTitle').textContent = 'Nuevo Robot';
+        document.getElementById('robotId').value = '';
+        document.getElementById('formNumeroSerie').value = '';
+        document.getElementById('formNumeroSerie').disabled = false;
+        document.getElementById('formModelo').value = '';
+        document.getElementById('formFamilia').value = '';
+        document.getElementById('formEstado').value = 'DISPONIBLE';
+        document.getElementById('formUbicacion').value = '';
+      }
+      document.getElementById('robotModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('robotModal').classList.add('hidden');
+      editingRobotId = null;
+    }
+
+    function saveRobot(e) {
+      e.preventDefault();
+      const id = document.getElementById('robotId').value;
+      const data = {
+        numeroSerie: document.getElementById('formNumeroSerie').value.trim(),
+        modelo: document.getElementById('formModelo').value.trim(),
+        familiaId: document.getElementById('formFamilia').value,
+        estado: document.getElementById('formEstado').value,
+        ubicacion: document.getElementById('formUbicacion').value.trim(),
+      };
+      if (!data.numeroSerie || !data.familiaId) {
+        showAlert('Número de serie y familia son requeridos', 'error');
+        return;
+      }
+      if (id) {
+        const idx = store.robots.findIndex(r => r.id === id);
+        if (idx >= 0) store.robots[idx] = { ...store.robots[idx], ...data };
+        showAlert('✅ Robot actualizado');
+      } else {
+        if (store.robots.some(r => r.numeroSerie === data.numeroSerie)) {
+          showAlert('Ya existe un robot con ese número de serie', 'error');
+          return;
+        }
+        store.robots.push({ id: 'r' + Date.now(), ...data });
+        showAlert('✅ Robot creado');
+      }
+      saveStore(store);
+      closeModal();
+      renderRobots();
+    }
+
+    function deleteRobot(id) {
+      if (!canEdit()) return;
+      if (!confirm('¿Eliminar este robot? Esta acción no se puede deshacer.')) return;
+      store.robots = store.robots.filter(r => r.id !== id);
+      saveStore(store);
+      showAlert('✅ Robot eliminado');
+      renderRobots();
+    }
+
+    // ============ USUARIOS ============
+    const rolColor = {
+      ADMIN: 'bg-purple-100 text-purple-800',
+      GERENTE_VENTAS: 'bg-indigo-100 text-indigo-800',
+      VENDEDOR: 'bg-blue-100 text-blue-800',
+      SERVICIO: 'bg-green-100 text-green-800',
+    };
+
+    function renderUsers() {
+      document.getElementById('userCount').textContent = store.users.length;
+      document.getElementById('usersTableBody').innerHTML = store.users.map(u => `
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 text-sm font-medium text-gray-900">${u.nombre}</td>
+          <td class="px-4 py-3 text-sm text-gray-700">${u.email}</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ${rolColor[u.rol] || 'bg-gray-100'}">${u.rol}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    // ============ INIT ============
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const user = login(email, password);
+      const errEl = document.getElementById('loginError');
+      if (!user) {
+        errEl.textContent = 'Credenciales inválidas';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      errEl.classList.add('hidden');
+      currentUser = user;
+      showApp();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+    document.getElementById('newRobotBtn').addEventListener('click', () => openRobotModal(null));
+    document.getElementById('cancelModal').addEventListener('click', closeModal);
+    document.getElementById('robotForm').addEventListener('submit', saveRobot);
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.addEventListener('click', () => switchTab(b.dataset.tab));
+    });
+    ['filterFamilia', 'filterEstado', 'filterSearch'].forEach(id => {
+      document.getElementById(id).addEventListener('input', renderRobots);
+      document.getElementById(id).addEventListener('change', renderRobots);
+    });
+
+    // Bootstrap
+    currentUser = getCurrentUser();
+    if (currentUser) {
+      showApp();
+    } else {
+      showLogin();
+    }
+  </script>
+</body>
+</html>
