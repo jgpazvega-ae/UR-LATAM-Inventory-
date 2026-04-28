@@ -23,38 +23,117 @@ async function main() {
   }
   console.log('✓ Familias de robots creadas');
 
-  // Distribuidores ejemplo
-  const distribuidores = [
-    { nombre: 'Distribuidora ABC', contactoPrincipal: 'Pedro García', correo: 'contacto@abc.com' },
-    { nombre: 'Distribuidora XYZ', contactoPrincipal: 'Ana López', correo: 'contacto@xyz.com' },
+  // Distribuidores
+  const distribuidoresData = [
+    { nombre: 'Universal Robots Latam', contactoPrincipal: 'Equipo Ventas', correo: 'ventas@ur-latam.com' },
+    { nombre: 'MiR Distribution', contactoPrincipal: 'Equipo MiR', correo: 'contacto@mir-distribution.com' },
+    { nombre: 'Teradyne Robotics Centro', contactoPrincipal: 'Centro de Operaciones', correo: 'centro@teradyne-robotics.com' },
   ];
 
-  for (const dist of distribuidores) {
+  const distribuidores: any = {};
+  for (const dist of distribuidoresData) {
     const existing = await prisma.distribuidor.findUnique({ where: { nombre: dist.nombre } });
-    if (!existing) {
-      await prisma.distribuidor.create({ data: dist });
+    if (existing) {
+      distribuidores[dist.nombre] = existing.id;
+    } else {
+      const created = await prisma.distribuidor.create({ data: dist });
+      distribuidores[dist.nombre] = created.id;
     }
   }
   console.log('✓ Distribuidores creados');
 
-  // Usuario admin por defecto
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@teradyne-robotics.com';
-  const adminExists = await prisma.usuario.findUnique({ where: { email: adminEmail } });
+  // Usuarios iniciales
+  const usuarios = [
+    // Admin
+    {
+      username: 'admin',
+      email: 'admin@teradyne-robotics.com',
+      nombreCompleto: 'Administrador Sistema',
+      rol: 'ADMIN',
+      activo: true,
+    },
+    // Gerente de Ventas
+    {
+      username: 'uriel.fraire',
+      email: 'uriel.fraire@teradyne-robotics.com',
+      nombreCompleto: 'Uriel Fraire',
+      rol: 'GERENTE_VENTAS',
+      activo: true,
+    },
+    // Vendedores
+    {
+      username: 'ximena.lama',
+      email: 'ximena.lama@teradyne-robotics.com',
+      nombreCompleto: 'Ximena Lama',
+      rol: 'VENDEDOR',
+      activo: true,
+      distribuidor: 'Universal Robots Latam',
+    },
+    {
+      username: 'emmanuel.ponce',
+      email: 'emmanuel.ponce@teradyne-robotics.com',
+      nombreCompleto: 'Emmanuel Ponce',
+      rol: 'VENDEDOR',
+      activo: true,
+      distribuidor: 'Universal Robots Latam',
+    },
+    {
+      username: 'miguel.lopez',
+      email: 'miguel.lopez@teradyne-robotics.com',
+      nombreCompleto: 'Miguel Lopez',
+      rol: 'VENDEDOR',
+      activo: true,
+      distribuidor: 'MiR Distribution',
+    },
+    {
+      username: 'jesus.coronado',
+      email: 'jesus.coronado@teradyne-robotics.com',
+      nombreCompleto: 'Jesus Coronado',
+      rol: 'VENDEDOR',
+      activo: true,
+      distribuidor: 'Universal Robots Latam',
+    },
+    {
+      username: 'maria.salcido',
+      email: 'maria.salcido@teradyne-robotics.com',
+      nombreCompleto: 'Maria Salcido',
+      rol: 'VENDEDOR',
+      activo: true,
+      distribuidor: 'Teradyne Robotics Centro',
+    },
+    // Equipo Técnico
+    {
+      username: 'giovanny.paz',
+      email: 'jose-giovanny.paz@teradyne-robotics.com',
+      nombreCompleto: 'Giovanny Paz',
+      rol: 'SERVICIO',
+      activo: true,
+    },
+    {
+      username: 'vinicius.bueno',
+      email: 'vinicius.bueno-santos@teradyne-robotics.com',
+      nombreCompleto: 'Vinicius Bueno Santos',
+      rol: 'SERVICIO',
+      activo: true,
+    },
+  ];
 
-  if (!adminExists) {
-    const passwordHash = await bcrypt.hash('admin123', 12);
-    await prisma.usuario.create({
-      data: {
-        username: 'admin',
-        email: adminEmail,
-        passwordHash,
-        nombreCompleto: 'Administrador',
-        rol: 'ADMIN',
-        activo: true,
-      },
-    });
-    console.log(`✓ Usuario admin creado: ${adminEmail} / admin123`);
+  for (const userData of usuarios) {
+    const { distribuidor, ...usuarioData } = userData as any;
+    const existing = await prisma.usuario.findUnique({ where: { email: usuarioData.email } });
+
+    if (!existing) {
+      const passwordHash = await bcrypt.hash('password123', 12);
+      await prisma.usuario.create({
+        data: {
+          ...usuarioData,
+          passwordHash,
+          distribuidorId: distribuidor ? distribuidores[distribuidor] : null,
+        },
+      });
+    }
   }
+  console.log('✓ Usuarios iniciales creados');
 
   // Configuración inicial
   const config = await prisma.configuracion.findFirst();
