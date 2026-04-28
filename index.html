@@ -38,16 +38,15 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <input id="loginPassword" type="password" value="password123" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-            <p class="text-xs text-gray-500 mt-1">Demo: <span class="font-mono">password123</span> para todos</p>
+            <input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
           </div>
           <button type="submit" class="w-full teradyne-secondary teradyne-secondary-hover text-white font-semibold py-2.5 rounded-lg transition">
             Iniciar Sesión
           </button>
         </form>
         <div id="loginError" class="hidden mt-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm"></div>
+        <p class="text-xs text-gray-500 mt-4 text-center">Usuarios de prueba: usa tu email + cualquier contraseña</p>
       </div>
-      <p class="text-center text-xs text-gray-500 mt-4">© 2024 Teradyne Robotics · Demo estático</p>
     </div>
   </div>
 
@@ -71,11 +70,13 @@
           <button id="logoutBtn" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm transition">Salir</button>
         </div>
       </div>
-      <nav class="bg-blue-900/30">
-        <div class="max-w-7xl mx-auto px-4 flex gap-1 overflow-x-auto">
-          <button data-tab="dashboard" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5 whitespace-nowrap">📊 Dashboard</button>
-          <button data-tab="robots" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5 whitespace-nowrap">🤖 Robots</button>
-          <button data-tab="usuarios" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5 whitespace-nowrap">👥 Usuarios</button>
+      <nav class="bg-blue-900/30 overflow-x-auto">
+        <div class="max-w-7xl mx-auto px-4 flex gap-1 whitespace-nowrap">
+          <button data-tab="dashboard" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">📊 Dashboard</button>
+          <button data-tab="robots" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">🤖 Robots</button>
+          <button data-tab="solicitudes" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">📋 Solicitudes Demo</button>
+          <button id="usuariosTab" data-tab="usuarios" class="tab-btn hidden px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">👥 Usuarios</button>
+          <button data-tab="perfil" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">⚙️ Mi Perfil</button>
         </div>
       </nav>
     </header>
@@ -140,10 +141,35 @@
         </div>
       </section>
 
-      <!-- Usuarios Tab -->
+      <!-- Solicitudes Demo Tab -->
+      <section id="tab-solicitudes" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div>
+            <h2 class="text-3xl font-bold text-gray-900">Solicitudes de Demo</h2>
+            <p class="text-gray-600 mt-1"><span id="solicitudesCount">0</span> solicitudes</p>
+          </div>
+          <button id="newSolicitudBtn" class="hidden teradyne-secondary teradyne-secondary-hover text-white px-4 py-2 rounded-lg font-medium transition">
+            + Nueva Solicitud
+          </button>
+        </div>
+
+        <div id="solicitudesContainer" class="space-y-4">
+          <p class="text-gray-500 text-center py-8">Cargando solicitudes...</p>
+        </div>
+      </section>
+
+      <!-- Usuarios Tab (solo para Admin) -->
       <section id="tab-usuarios" class="hidden">
-        <h2 class="text-3xl font-bold text-gray-900 mb-2">Usuarios del Sistema</h2>
-        <p class="text-gray-600 mb-6"><span id="userCount">0</span> usuarios registrados</p>
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div>
+            <h2 class="text-3xl font-bold text-gray-900">Gestión de Usuarios</h2>
+            <p class="text-gray-600 mt-1"><span id="userCount">0</span> usuarios en el sistema</p>
+          </div>
+          <button id="newUserBtn" class="teradyne-secondary teradyne-secondary-hover text-white px-4 py-2 rounded-lg font-medium transition">
+            + Nuevo Usuario
+          </button>
+        </div>
+
         <div class="bg-white rounded-xl shadow overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full">
@@ -152,10 +178,55 @@
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nombre</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Rol</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Acciones</th>
                 </tr>
               </thead>
               <tbody id="usersTableBody" class="divide-y divide-gray-200"></tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Mi Perfil Tab -->
+      <section id="tab-perfil" class="hidden">
+        <h2 class="text-3xl font-bold text-gray-900 mb-6">Mi Perfil</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Información Personal</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+                <p id="profileNombre" class="text-base text-gray-900 font-medium"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                <p id="profileEmail" class="text-base text-gray-900 font-medium"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Rol</label>
+                <p id="profileRol" class="text-base text-gray-900 font-medium"></p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Cambiar Contraseña</h3>
+            <form id="changePasswordForm" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña Actual</label>
+                <input id="currentPassword" type="password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
+                <input id="newPassword" type="password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar Nueva Contraseña</label>
+                <input id="confirmPassword" type="password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              </div>
+              <button type="submit" class="w-full teradyne-secondary teradyne-secondary-hover text-white font-semibold py-2.5 rounded-lg transition">
+                Actualizar Contraseña
+              </button>
+            </form>
           </div>
         </div>
       </section>
@@ -209,18 +280,89 @@
     </div>
   </div>
 
+  <!-- Modal Usuario -->
+  <div id="userModal" class="hidden fixed inset-0 bg-black/50 modal-backdrop flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b">
+        <h2 id="userModalTitle" class="text-xl font-bold text-gray-900">Nuevo Usuario</h2>
+      </div>
+      <form id="userForm" class="p-6 space-y-4">
+        <input type="hidden" id="userId">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo *</label>
+          <input id="formUserNombre" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+          <input id="formUserEmail" type="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Rol *</label>
+          <select id="formUserRol" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="">Selecciona rol...</option>
+            <option value="ADMIN">ADMIN</option>
+            <option value="GERENTE_VENTAS">GERENTE_VENTAS</option>
+            <option value="VENDEDOR">VENDEDOR</option>
+            <option value="SERVICIO">SERVICIO</option>
+          </select>
+        </div>
+        <div id="passwordField">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña *</label>
+          <input id="formUserPassword" type="password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div class="flex justify-end gap-3 pt-4 border-t">
+          <button type="button" id="cancelUserModal" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+          <button type="submit" class="px-4 py-2 teradyne-secondary teradyne-secondary-hover text-white rounded-lg font-medium transition">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Solicitud Demo -->
+  <div id="solicitudModal" class="hidden fixed inset-0 bg-black/50 modal-backdrop flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b">
+        <h2 class="text-xl font-bold text-gray-900">Nueva Solicitud de Demo</h2>
+      </div>
+      <form id="solicitudForm" class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Robot *</label>
+          <select id="formSolicitudRobot" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="">Selecciona robot...</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio *</label>
+          <input id="formSolicitudFecha" type="date" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Duración (días) *</label>
+          <input id="formSolicitudDuracion" type="number" min="1" value="7" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+          <textarea id="formSolicitudObservaciones" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+        </div>
+        <div class="flex justify-end gap-3 pt-4 border-t">
+          <button type="button" id="cancelSolicitudModal" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+          <button type="submit" class="px-4 py-2 teradyne-secondary teradyne-secondary-hover text-white rounded-lg font-medium transition">Enviar Solicitud</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     // ============ DATOS INICIALES ============
     const INITIAL_USERS = [
-      { id: 'u1', email: 'admin@teradyne-robotics.com', nombre: 'Administrador Sistema', rol: 'ADMIN' },
-      { id: 'u2', email: 'uriel.fraire@teradyne-robotics.com', nombre: 'Uriel Fraire', rol: 'GERENTE_VENTAS' },
-      { id: 'u3', email: 'ximena.lama@teradyne-robotics.com', nombre: 'Ximena Lama', rol: 'VENDEDOR' },
-      { id: 'u4', email: 'emmanuel.ponce@teradyne-robotics.com', nombre: 'Emmanuel Ponce', rol: 'VENDEDOR' },
-      { id: 'u5', email: 'miguel.lopez@teradyne-robotics.com', nombre: 'Miguel Lopez', rol: 'VENDEDOR' },
-      { id: 'u6', email: 'jesus.coronado@teradyne-robotics.com', nombre: 'Jesus Coronado', rol: 'VENDEDOR' },
-      { id: 'u7', email: 'maria.salcido@teradyne-robotics.com', nombre: 'Maria Salcido', rol: 'VENDEDOR' },
-      { id: 'u8', email: 'jose-giovanny.paz@teradyne-robotics.com', nombre: 'Giovanny Paz', rol: 'SERVICIO' },
-      { id: 'u9', email: 'vinicius.bueno-santos@teradyne-robotics.com', nombre: 'Vinicius Bueno Santos', rol: 'SERVICIO' },
+      { id: 'u1', email: 'admin@teradyne-robotics.com', nombre: 'Administrador Sistema', rol: 'ADMIN', password: 'admin123' },
+      { id: 'u2', email: 'uriel.fraire@teradyne-robotics.com', nombre: 'Uriel Fraire', rol: 'GERENTE_VENTAS', password: 'uriel123' },
+      { id: 'u3', email: 'ximena.lama@teradyne-robotics.com', nombre: 'Ximena Lama', rol: 'VENDEDOR', password: 'ximena123' },
+      { id: 'u4', email: 'emmanuel.ponce@teradyne-robotics.com', nombre: 'Emmanuel Ponce', rol: 'VENDEDOR', password: 'emmanuel123' },
+      { id: 'u5', email: 'miguel.lopez@teradyne-robotics.com', nombre: 'Miguel Lopez', rol: 'VENDEDOR', password: 'miguel123' },
+      { id: 'u6', email: 'jesus.coronado@teradyne-robotics.com', nombre: 'Jesus Coronado', rol: 'VENDEDOR', password: 'jesus123' },
+      { id: 'u7', email: 'maria.salcido@teradyne-robotics.com', nombre: 'Maria Salcido', rol: 'VENDEDOR', password: 'maria123' },
+      { id: 'u8', email: 'jose-giovanny.paz@teradyne-robotics.com', nombre: 'Giovanny Paz', rol: 'SERVICIO', password: 'giovanny123' },
+      { id: 'u9', email: 'vinicius.bueno-santos@teradyne-robotics.com', nombre: 'Vinicius Bueno Santos', rol: 'SERVICIO', password: 'vinicius123' },
     ];
 
     const INITIAL_FAMILIAS = [
@@ -285,7 +427,7 @@
     ];
 
     // ============ STORAGE ============
-    const STORAGE_KEY = 'teradyne_inventory_v1';
+    const STORAGE_KEY = 'teradyne_inventory_v2';
 
     function loadStore() {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -300,7 +442,12 @@
         estado: mapEstado(r.estado),
         ubicacion: '',
       }));
-      const store = { users: INITIAL_USERS, familias: INITIAL_FAMILIAS, robots };
+      const store = {
+        users: INITIAL_USERS.map(u => ({ ...u })),
+        familias: INITIAL_FAMILIAS,
+        robots,
+        solicitudes: []
+      };
       saveStore(store);
       return store;
     }
@@ -312,6 +459,7 @@
     let store = loadStore();
     let currentUser = null;
     let editingRobotId = null;
+    let editingUserId = null;
 
     // ============ AUTH ============
     function getCurrentUser() {
@@ -320,9 +468,8 @@
     }
 
     function login(email, password) {
-      if (password !== 'password123') return null;
       const user = store.users.find(u => u.email === email);
-      if (!user) return null;
+      if (!user || user.password !== password) return null;
       sessionStorage.setItem('teradyne_user', JSON.stringify(user));
       return user;
     }
@@ -333,8 +480,20 @@
       showLogin();
     }
 
-    function canEdit() {
+    function canEditRobots() {
       return currentUser && (currentUser.rol === 'ADMIN' || currentUser.rol === 'SERVICIO');
+    }
+
+    function canManageUsers() {
+      return currentUser && currentUser.rol === 'ADMIN';
+    }
+
+    function canCreateSolicitud() {
+      return currentUser && currentUser.rol === 'VENDEDOR';
+    }
+
+    function canManageSolicitud() {
+      return currentUser && (currentUser.rol === 'ADMIN' || currentUser.rol === 'GERENTE_VENTAS' || currentUser.rol === 'SERVICIO');
     }
 
     // ============ UI ============
@@ -351,18 +510,34 @@
       document.getElementById('appView').classList.remove('hidden');
       document.getElementById('userName').textContent = currentUser.nombre;
       document.getElementById('userRole').textContent = currentUser.rol;
-      if (canEdit()) {
+
+      // Tab de usuarios solo para admin
+      if (canManageUsers()) {
+        document.getElementById('usuariosTab').classList.remove('hidden');
+      } else {
+        document.getElementById('usuariosTab').classList.add('hidden');
+      }
+
+      // Botones según permisos
+      if (canEditRobots()) {
         document.getElementById('newRobotBtn').classList.remove('hidden');
         document.getElementById('actionsHeader').classList.remove('hidden');
       } else {
         document.getElementById('newRobotBtn').classList.add('hidden');
         document.getElementById('actionsHeader').classList.add('hidden');
       }
+
+      if (canCreateSolicitud()) {
+        document.getElementById('newSolicitudBtn').classList.remove('hidden');
+      } else {
+        document.getElementById('newSolicitudBtn').classList.add('hidden');
+      }
+
       switchTab('dashboard');
     }
 
     function switchTab(tab) {
-      ['dashboard', 'robots', 'usuarios'].forEach(t => {
+      ['dashboard', 'robots', 'solicitudes', 'usuarios', 'perfil'].forEach(t => {
         document.getElementById('tab-' + t).classList.add('hidden');
       });
       document.getElementById('tab-' + tab).classList.remove('hidden');
@@ -373,9 +548,12 @@
           b.classList.remove('border-white', 'bg-white/10');
         }
       });
+
       if (tab === 'dashboard') renderDashboard();
       if (tab === 'robots') renderRobots();
       if (tab === 'usuarios') renderUsers();
+      if (tab === 'solicitudes') renderSolicitudes();
+      if (tab === 'perfil') renderPerfil();
     }
 
     function showAlert(msg, tipo = 'success') {
@@ -466,7 +644,7 @@
       }
       empty.classList.add('hidden');
 
-      const showActions = canEdit();
+      const showActions = canEditRobots();
       body.innerHTML = robots.map(r => {
         const familia = store.familias.find(f => f.id === r.familiaId);
         return `
@@ -496,7 +674,7 @@
     }
 
     function openRobotModal(id) {
-      if (!canEdit()) { showAlert('No tienes permisos para editar', 'error'); return; }
+      if (!canEditRobots()) { showAlert('No tienes permisos para editar', 'error'); return; }
       editingRobotId = id || null;
 
       const famSel = document.getElementById('formFamilia');
@@ -564,7 +742,7 @@
     }
 
     function deleteRobot(id) {
-      if (!canEdit()) return;
+      if (!canEditRobots()) return;
       if (!confirm('¿Eliminar este robot? Esta acción no se puede deshacer.')) return;
       store.robots = store.robots.filter(r => r.id !== id);
       saveStore(store);
@@ -587,8 +765,280 @@
           <td class="px-4 py-3 text-sm font-medium text-gray-900">${u.nombre}</td>
           <td class="px-4 py-3 text-sm text-gray-700">${u.email}</td>
           <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ${rolColor[u.rol] || 'bg-gray-100'}">${u.rol}</span></td>
+          <td class="px-4 py-3 text-right text-sm space-x-2 whitespace-nowrap">
+            <button data-edit-user="${u.id}" class="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+            <button data-delete-user="${u.id}" class="text-red-600 hover:text-red-800 font-medium">Eliminar</button>
+          </td>
         </tr>
       `).join('');
+
+      document.querySelectorAll('[data-edit-user]').forEach(btn => {
+        btn.addEventListener('click', () => openUserModal(btn.dataset.editUser));
+      });
+      document.querySelectorAll('[data-delete-user]').forEach(btn => {
+        btn.addEventListener('click', () => deleteUser(btn.dataset.deleteUser));
+      });
+    }
+
+    function openUserModal(id) {
+      editingUserId = id || null;
+      const pwField = document.getElementById('passwordField');
+      const pwInput = document.getElementById('formUserPassword');
+
+      if (id) {
+        const u = store.users.find(x => x.id === id);
+        if (!u) return;
+        document.getElementById('userModalTitle').textContent = 'Editar Usuario';
+        document.getElementById('userId').value = u.id;
+        document.getElementById('formUserNombre').value = u.nombre;
+        document.getElementById('formUserEmail').value = u.email;
+        document.getElementById('formUserRol').value = u.rol;
+        pwField.classList.add('hidden');
+        pwInput.removeAttribute('required');
+      } else {
+        document.getElementById('userModalTitle').textContent = 'Nuevo Usuario';
+        document.getElementById('userId').value = '';
+        document.getElementById('formUserNombre').value = '';
+        document.getElementById('formUserEmail').value = '';
+        document.getElementById('formUserRol').value = '';
+        pwField.classList.remove('hidden');
+        pwInput.setAttribute('required', 'true');
+        pwInput.value = '';
+      }
+      document.getElementById('userModal').classList.remove('hidden');
+    }
+
+    function closeUserModal() {
+      document.getElementById('userModal').classList.add('hidden');
+      editingUserId = null;
+    }
+
+    function saveUser(e) {
+      e.preventDefault();
+      const id = document.getElementById('userId').value;
+      const data = {
+        nombre: document.getElementById('formUserNombre').value.trim(),
+        email: document.getElementById('formUserEmail').value.trim(),
+        rol: document.getElementById('formUserRol').value,
+      };
+
+      if (!data.nombre || !data.email || !data.rol) {
+        showAlert('Completa todos los campos requeridos', 'error');
+        return;
+      }
+
+      if (id) {
+        const idx = store.users.findIndex(u => u.id === id);
+        if (idx >= 0) {
+          store.users[idx] = { ...store.users[idx], ...data };
+          if (currentUser.id === id) {
+            currentUser = store.users[idx];
+            sessionStorage.setItem('teradyne_user', JSON.stringify(currentUser));
+            document.getElementById('userRole').textContent = currentUser.rol;
+          }
+        }
+        showAlert('✅ Usuario actualizado');
+      } else {
+        const password = document.getElementById('formUserPassword').value.trim();
+        if (!password) {
+          showAlert('La contraseña es requerida para usuarios nuevos', 'error');
+          return;
+        }
+        if (store.users.some(u => u.email === data.email)) {
+          showAlert('Ya existe un usuario con ese email', 'error');
+          return;
+        }
+        store.users.push({ id: 'u' + Date.now(), ...data, password });
+        showAlert('✅ Usuario creado');
+      }
+      saveStore(store);
+      closeUserModal();
+      renderUsers();
+    }
+
+    function deleteUser(id) {
+      if (currentUser.id === id) {
+        showAlert('No puedes eliminar tu propia cuenta', 'error');
+        return;
+      }
+      if (!confirm('¿Eliminar este usuario?')) return;
+      store.users = store.users.filter(u => u.id !== id);
+      saveStore(store);
+      showAlert('✅ Usuario eliminado');
+      renderUsers();
+    }
+
+    // ============ SOLICITUDES DEMO ============
+    function renderSolicitudes() {
+      const canManage = canManageSolicitud();
+      const solicitudes = canManage ? store.solicitudes : store.solicitudes.filter(s => s.vendedorId === currentUser.id);
+
+      document.getElementById('solicitudesCount').textContent = solicitudes.length;
+
+      if (solicitudes.length === 0) {
+        document.getElementById('solicitudesContainer').innerHTML = '<p class="text-gray-500 text-center py-8">No hay solicitudes</p>';
+        return;
+      }
+
+      const estadoColor = {
+        PENDIENTE: 'bg-yellow-100 text-yellow-800',
+        APROBADA: 'bg-green-100 text-green-800',
+        RECHAZADA: 'bg-red-100 text-red-800',
+        COMPLETADA: 'bg-blue-100 text-blue-800',
+      };
+
+      document.getElementById('solicitudesContainer').innerHTML = solicitudes.map(s => {
+        const robot = store.robots.find(r => r.id === s.robotId);
+        const vendedor = store.users.find(u => u.id === s.vendedorId);
+        return `
+          <div class="bg-white rounded-xl shadow p-6">
+            <div class="flex flex-wrap items-start justify-between gap-2 mb-4">
+              <div>
+                <h3 class="text-lg font-bold text-gray-900">${robot?.numeroSerie} - ${robot?.modelo}</h3>
+                <p class="text-sm text-gray-600">Solicitado por: ${vendedor?.nombre}</p>
+              </div>
+              <span class="px-3 py-1 rounded-full text-sm font-medium ${estadoColor[s.estado] || 'bg-gray-100'}">${s.estado}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <p class="text-xs text-gray-600">Fecha inicio</p>
+                <p class="font-semibold text-gray-900">${s.fechaInicio}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-600">Duración</p>
+                <p class="font-semibold text-gray-900">${s.duracion} días</p>
+              </div>
+            </div>
+            ${s.observaciones ? `<p class="text-sm text-gray-700 mb-4"><strong>Observaciones:</strong> ${s.observaciones}</p>` : ''}
+            ${canManage && s.estado === 'PENDIENTE' ? `
+              <div class="flex gap-2">
+                <button data-approve-solicitud="${s.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-medium transition">Aprobar</button>
+                <button data-reject-solicitud="${s.id}" class="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-medium transition">Rechazar</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      document.querySelectorAll('[data-approve-solicitud]').forEach(btn => {
+        btn.addEventListener('click', () => approveSolicitud(btn.dataset.approveSolicitud));
+      });
+      document.querySelectorAll('[data-reject-solicitud]').forEach(btn => {
+        btn.addEventListener('click', () => rejectSolicitud(btn.dataset.rejectSolicitud));
+      });
+    }
+
+    function openSolicitudModal() {
+      if (!canCreateSolicitud()) return;
+      const sel = document.getElementById('formSolicitudRobot');
+      sel.innerHTML = '<option value="">Selecciona robot...</option>' +
+        store.robots.filter(r => r.estado === 'DISPONIBLE').map(r =>
+          `<option value="${r.id}">${r.numeroSerie} - ${r.modelo}</option>`
+        ).join('');
+
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('formSolicitudFecha').value = today;
+      document.getElementById('formSolicitudDuracion').value = '7';
+      document.getElementById('formSolicitudObservaciones').value = '';
+      document.getElementById('solicitudModal').classList.remove('hidden');
+    }
+
+    function closeSolicitudModal() {
+      document.getElementById('solicitudModal').classList.add('hidden');
+    }
+
+    function saveSolicitud(e) {
+      e.preventDefault();
+      const data = {
+        robotId: document.getElementById('formSolicitudRobot').value,
+        fechaInicio: document.getElementById('formSolicitudFecha').value,
+        duracion: parseInt(document.getElementById('formSolicitudDuracion').value),
+        observaciones: document.getElementById('formSolicitudObservaciones').value.trim(),
+      };
+
+      if (!data.robotId) {
+        showAlert('Selecciona un robot', 'error');
+        return;
+      }
+
+      const gerente = store.users.find(u => u.rol === 'GERENTE_VENTAS');
+      const solicitud = {
+        id: 's' + Date.now(),
+        ...data,
+        vendedorId: currentUser.id,
+        estado: 'PENDIENTE',
+        fechaCreacion: new Date().toISOString().split('T')[0],
+      };
+
+      store.solicitudes.push(solicitud);
+      saveStore(store);
+
+      // Simular email al gerente
+      showAlert(`✅ Solicitud enviada. Email de autorización enviado a ${gerente?.nombre}`);
+      closeSolicitudModal();
+      renderSolicitudes();
+    }
+
+    function approveSolicitud(id) {
+      const idx = store.solicitudes.findIndex(s => s.id === id);
+      if (idx >= 0) {
+        const s = store.solicitudes[idx];
+        s.estado = 'APROBADA';
+        const robot = store.robots.find(r => r.id === s.robotId);
+        const vendedor = store.users.find(u => u.id === s.vendedorId);
+        saveStore(store);
+        showAlert(`✅ Solicitud aprobada. Email de confirmación enviado a ${vendedor?.nombre}`);
+        renderSolicitudes();
+      }
+    }
+
+    function rejectSolicitud(id) {
+      const idx = store.solicitudes.findIndex(s => s.id === id);
+      if (idx >= 0) {
+        const s = store.solicitudes[idx];
+        s.estado = 'RECHAZADA';
+        const vendedor = store.users.find(u => u.id === s.vendedorId);
+        saveStore(store);
+        showAlert(`✅ Solicitud rechazada. Email de notificación enviado a ${vendedor?.nombre}`);
+        renderSolicitudes();
+      }
+    }
+
+    // ============ PERFIL ============
+    function renderPerfil() {
+      document.getElementById('profileNombre').textContent = currentUser.nombre;
+      document.getElementById('profileEmail').textContent = currentUser.email;
+      document.getElementById('profileRol').textContent = currentUser.rol;
+    }
+
+    function changePassword(e) {
+      e.preventDefault();
+      const current = document.getElementById('currentPassword').value;
+      const newPw = document.getElementById('newPassword').value;
+      const confirm = document.getElementById('confirmPassword').value;
+
+      if (current !== currentUser.password) {
+        showAlert('La contraseña actual es incorrecta', 'error');
+        return;
+      }
+      if (newPw !== confirm) {
+        showAlert('Las nuevas contraseñas no coinciden', 'error');
+        return;
+      }
+      if (newPw.length < 4) {
+        showAlert('La contraseña debe tener al menos 4 caracteres', 'error');
+        return;
+      }
+
+      const idx = store.users.findIndex(u => u.id === currentUser.id);
+      if (idx >= 0) {
+        store.users[idx].password = newPw;
+        currentUser.password = newPw;
+        sessionStorage.setItem('teradyne_user', JSON.stringify(currentUser));
+        saveStore(store);
+        showAlert('✅ Contraseña actualizada');
+        document.getElementById('changePasswordForm').reset();
+      }
     }
 
     // ============ INIT ============
@@ -612,6 +1062,17 @@
     document.getElementById('newRobotBtn').addEventListener('click', () => openRobotModal(null));
     document.getElementById('cancelModal').addEventListener('click', closeModal);
     document.getElementById('robotForm').addEventListener('submit', saveRobot);
+
+    document.getElementById('newUserBtn').addEventListener('click', () => openUserModal(null));
+    document.getElementById('cancelUserModal').addEventListener('click', closeUserModal);
+    document.getElementById('userForm').addEventListener('submit', saveUser);
+
+    document.getElementById('newSolicitudBtn').addEventListener('click', openSolicitudModal);
+    document.getElementById('cancelSolicitudModal').addEventListener('click', closeSolicitudModal);
+    document.getElementById('solicitudForm').addEventListener('submit', saveSolicitud);
+
+    document.getElementById('changePasswordForm').addEventListener('submit', changePassword);
+
     document.querySelectorAll('.tab-btn').forEach(b => {
       b.addEventListener('click', () => switchTab(b.dataset.tab));
     });
