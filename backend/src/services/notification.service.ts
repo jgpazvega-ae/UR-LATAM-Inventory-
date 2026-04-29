@@ -112,15 +112,20 @@ export const enviarAlertasVencidos = async () => {
  * Inicia los cron jobs según horarios configurados
  */
 export const iniciarCronJobs = async () => {
-  const config = await prisma.configuracion.findFirst();
+  let config = null;
   let horarios: string[] = ['08:00', '12:00', '16:00'];
 
-  if (config?.horariosNotificacion) {
-    try {
-      horarios = JSON.parse(config.horariosNotificacion);
-    } catch {
-      console.warn('Horarios de notificación inválidos, usando default');
+  try {
+    config = await prisma.configuracion.findFirst();
+    if (config?.horariosNotificacion) {
+      try {
+        horarios = JSON.parse(config.horariosNotificacion);
+      } catch {
+        console.warn('Horarios de notificación inválidos, usando default');
+      }
     }
+  } catch (error) {
+    console.warn('⚠️ Base de datos no disponible. Usando horarios por defecto.');
   }
 
   // Configurar cron jobs para cada horario (Lunes a Viernes)
