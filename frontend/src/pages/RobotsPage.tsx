@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { robotService } from '../services/robot.service'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotification } from '../contexts/NotificationContext'
+import { useRegionLanguage } from '../contexts/RegionLanguageContext'
 
 const estadoBadge: Record<string, string> = {
   DISPONIBLE: 'bg-green-100 text-green-800',
@@ -13,6 +14,7 @@ const estadoBadge: Record<string, string> = {
 export default function RobotsPage() {
   const { isAdmin, user } = useAuth()
   const { addNotification } = useNotification()
+  const { currentRegion } = useRegionLanguage()
   const puedeEditar = isAdmin || user?.rol === 'SERVICIO'
 
   const [robots, setRobots] = useState<any[]>([])
@@ -26,7 +28,9 @@ export default function RobotsPage() {
   const cargar = async () => {
     setLoading(true)
     try {
-      const filtros: any = {}
+      const filtros: any = {
+        region: currentRegion,
+      }
       if (filtroFamilia) filtros.familiaId = filtroFamilia
       if (filtroEstado) filtros.estado = filtroEstado
       const [rs, fs] = await Promise.all([
@@ -45,7 +49,7 @@ export default function RobotsPage() {
 
   useEffect(() => {
     cargar()
-  }, [filtroFamilia, filtroEstado])
+  }, [filtroFamilia, filtroEstado, currentRegion, addNotification])
 
   const handleGuardar = async (data: any) => {
     try {
@@ -173,6 +177,7 @@ export default function RobotsPage() {
         <RobotModal
           robot={editing}
           familias={familias}
+          region={currentRegion}
           onSave={handleGuardar}
           onClose={() => { setShowModal(false); setEditing(null) }}
         />
@@ -181,13 +186,14 @@ export default function RobotsPage() {
   )
 }
 
-function RobotModal({ robot, familias, onSave, onClose }: any) {
+function RobotModal({ robot, familias, region, onSave, onClose }: any) {
   const [form, setForm] = useState({
     numeroSerie: robot?.numeroSerie || '',
     modelo: robot?.modelo || '',
     familiaId: robot?.familiaId || '',
     estado: robot?.estado || 'DISPONIBLE',
     ubicacionActual: robot?.ubicacionActual || '',
+    region: robot?.region || region,
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -273,6 +279,22 @@ function RobotModal({ robot, familias, onSave, onClose }: any) {
                 placeholder="Almacén..."
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Región *</label>
+            <select
+              value={form.region}
+              onChange={(e) => setForm({ ...form, region: e.target.value })}
+              disabled={!!robot?.id}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none disabled:bg-gray-100"
+            >
+              <option value="">Selecciona región</option>
+              <option value="MX">🇲🇽 México</option>
+              <option value="BR">🇧🇷 Brasil</option>
+              <option value="USA">🇺🇸 USA</option>
+            </select>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">

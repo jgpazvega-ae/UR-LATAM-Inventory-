@@ -1,42 +1,63 @@
 import { useEffect, useState } from 'react'
 import { configuracionService } from '../services/configuracion.service'
+import { useAuth } from '../contexts/AuthContext'
+import { useNotification } from '../contexts/NotificationContext'
 
 export default function ConfiguracionPage() {
+  const { isAdmin } = useAuth()
+  const { addNotification } = useNotification()
   const [config, setConfig] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [mensaje, setMensaje] = useState('')
 
   useEffect(() => {
-    configuracionService.obtener().then(c => {
-      let horarios = ['08:00', '12:00', '16:00']
+    const cargar = async () => {
       try {
-        if (c.horariosNotificacion) horarios = JSON.parse(c.horariosNotificacion)
-      } catch {}
-      setConfig({ ...c, horariosArr: horarios })
-      setLoading(false)
-    })
-  }, [])
+        const c = await configuracionService.obtener()
+        let horarios = ['08:00', '12:00', '16:00']
+        try {
+          if (c.horariosNotificacion) {
+            horarios = Array.isArray(c.horariosNotificacion)
+              ? c.horariosNotificacion
+              : JSON.parse(c.horariosNotificacion)
+          }
+        } catch {}
+        setConfig({ ...c, horariosArr: horarios })
+      } catch (err) {
+        addNotification('Error al cargar configuración', 'error')
+      } finally {
+        setLoading(false)
+      }
+    }
+    cargar()
+  }, [addNotification])
 
   const guardar = async () => {
     setSaving(true)
-    setMensaje('')
     try {
       const { horariosArr, ...rest } = config
       await configuracionService.actualizar({
         ...rest,
         horariosNotificacion: horariosArr,
       })
-      setMensaje('✅ Configuración guardada correctamente')
-      setTimeout(() => setMensaje(''), 3000)
+      addNotification('Configuración guardada correctamente', 'success')
     } catch {
-      setMensaje('❌ Error al guardar')
+      addNotification('Error al guardar configuración', 'error')
     } finally {
       setSaving(false)
     }
   }
 
+  if (!isAdmin) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+        <p className="text-yellow-800">Solo administradores pueden acceder a esta sección</p>
+      </div>
+    )
+  }
+
   if (loading) return <div className="text-center py-8">Cargando...</div>
+  if (!config) return <div className="text-center py-8">No hay configuración disponible</div>
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -44,12 +65,6 @@ export default function ConfiguracionPage() {
         <h1 className="text-3xl font-bold text-gray-900">Configuración del Sistema</h1>
         <p className="text-gray-600 mt-1">Parámetros generales y notificaciones</p>
       </div>
-
-      {mensaje && (
-        <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded text-blue-800">
-          {mensaje}
-        </div>
-      )}
 
       <div className="bg-white rounded-lg shadow p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Tiempos</h2>

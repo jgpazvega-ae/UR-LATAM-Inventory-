@@ -29,25 +29,27 @@ function App() {
     <AuthProvider>
       <RegionLanguageProvider>
         <NotificationProvider>
-          <BrowserRouter>
+          <div className="w-full">
             <Notifications />
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/usuarios" element={<UsuariosPage />} />
-                <Route path="/solicitudes" element={<SolicitudesPage />} />
-                <Route path="/solicitudes/nueva" element={<NuevaSolicitudPage />} />
-                <Route path="/solicitudes/:id" element={<SolicitudDetallePage />} />
-                <Route path="/robots" element={<RobotsPage />} />
-                <Route path="/configuracion" element={<ConfiguracionPage />} />
-                <Route path="/reportes/demos" element={<ReporteDemosPage />} />
-                <Route path="/gestion-contrasenas" element={<GestionContraseñasPage />} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/usuarios" element={<UsuariosPage />} />
+                  <Route path="/solicitudes" element={<SolicitudesPage />} />
+                  <Route path="/solicitudes/nueva" element={<NuevaSolicitudPage />} />
+                  <Route path="/solicitudes/:id" element={<SolicitudDetallePage />} />
+                  <Route path="/robots" element={<RobotsPage />} />
+                  <Route path="/configuracion" element={<ConfiguracionPage />} />
+                  <Route path="/reportes/demos" element={<ReporteDemosPage />} />
+                  <Route path="/gestion-contrasenas" element={<GestionContraseñasPage />} />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+          </div>
         </NotificationProvider>
       </RegionLanguageProvider>
     </AuthProvider>
