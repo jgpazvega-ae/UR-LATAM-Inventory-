@@ -194,6 +194,43 @@ export const templates = {
       </div>
       <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" class="button">Ingresar al Sistema</a>
     `),
+
+  solicitudParaAprobacion: (data: { numeroSolicitud: string; solicitante: string; robots: string; fechaInicio: string; fechaFin: string; motivo: string }) =>
+    baseTemplate('📋 Nueva Solicitud Pendiente de Aprobación', `
+      <p>Hola,</p>
+      <div class="info-box">
+        <p><strong>Hay una nueva solicitud de demo pendiente de aprobación.</strong></p>
+      </div>
+      <table>
+        <tr><td>Número de Solicitud:</td><td><strong>${data.numeroSolicitud}</strong></td></tr>
+        <tr><td>Solicitante:</td><td>${data.solicitante}</td></tr>
+        <tr><td>Robots:</td><td>${data.robots}</td></tr>
+        <tr><td>Fecha Inicio:</td><td>${data.fechaInicio}</td></tr>
+        <tr><td>Fecha Fin:</td><td>${data.fechaFin}</td></tr>
+        <tr><td>Motivo:</td><td>${data.motivo}</td></tr>
+      </table>
+      <p>Por favor, revisa el sistema para aprobar o rechazar esta solicitud.</p>
+    `),
+
+  resultadoSolicitud: (data: { numeroSolicitud: string; solicitante: string; estado: 'APROBADO' | 'RECHAZADO'; robots: string; fechaInicio: string; fechaFin: string; motivo?: string }) =>
+    baseTemplate(
+      data.estado === 'APROBADO' ? '✅ Solicitud Aprobada' : '❌ Solicitud Rechazada',
+      `
+      <p>Hola,</p>
+      <div class="${data.estado === 'APROBADO' ? 'success-box' : 'danger-box'}">
+        <p><strong>La solicitud ${data.numeroSolicitud} ha sido ${data.estado === 'APROBADO' ? 'APROBADA' : 'RECHAZADA'}.</strong></p>
+      </div>
+      <table>
+        <tr><td>Número de Solicitud:</td><td><strong>${data.numeroSolicitud}</strong></td></tr>
+        <tr><td>Solicitante:</td><td>${data.solicitante}</td></tr>
+        <tr><td>Robots:</td><td>${data.robots}</td></tr>
+        <tr><td>Período:</td><td>${data.fechaInicio} - ${data.fechaFin}</td></tr>
+        ${data.motivo ? `<tr><td>Motivo Rechazo:</td><td>${data.motivo}</td></tr>` : ''}
+      </table>
+      <p>${data.estado === 'APROBADO'
+        ? 'El personal de servicio coordinará los detalles de entrega.'
+        : 'Se ha notificado al solicitante sobre el rechazo.'}</p>
+    `)
 };
 
 export default { sendEmail, templates };

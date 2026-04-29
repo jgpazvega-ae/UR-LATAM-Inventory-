@@ -12,6 +12,7 @@ export default function NuevaSolicitudPage() {
   const [paso, setPaso] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [prestamoActivo, setPrestamoActivo] = useState<any>(null)
 
   // Datos del wizard
   const [familias, setFamilias] = useState<any[]>([])
@@ -34,14 +35,21 @@ export default function NuevaSolicitudPage() {
   useEffect(() => {
     const cargar = async () => {
       try {
-        const [fams, dists, config] = await Promise.all([
+        const [fams, dists, config, solicitudes] = await Promise.all([
           robotService.listarFamilias(),
           userService.listarDistribuidores(),
           configuracionService.obtener(),
+          prestamoService.listar({ estado: 'ACTIVO', usuario: 'mias' }),
         ])
         setFamilias(fams)
         setDistribuidores(dists)
         if (config?.diasMinimosAnticipacion) setDiasMin(config.diasMinimosAnticipacion)
+
+        // Verificar si hay un préstamo activo sin confirmar recepción
+        const prestamoSinRecepcion = solicitudes.find((s: any) => !s.estadoRecepcion)
+        if (prestamoSinRecepcion) {
+          setPrestamoActivo(prestamoSinRecepcion)
+        }
       } catch (err) {
         console.error(err)
       }
@@ -96,6 +104,41 @@ export default function NuevaSolicitudPage() {
   const diasDuracion = fechaInicio && fechaFin
     ? Math.ceil((new Date(fechaFin).getTime() - new Date(fechaInicio).getTime()) / (1000 * 60 * 60 * 24))
     : 0
+
+  if (prestamoActivo) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
+          <h2 className="text-2xl font-bold text-red-800 mb-3">⚠️ Préstamo Activo Pendiente de Devolución</h2>
+          <p className="text-red-700 mb-4">
+            No puedes crear una nueva solicitud mientras tengas un préstamo activo sin confirmar recepción.
+          </p>
+          <div className="bg-white rounded p-4 mb-4 border border-red-200">
+            <p className="text-sm text-gray-700 mb-2"><strong>Solicitud Activa:</strong> {prestamoActivo.numeroSolicitud}</p>
+            <p className="text-sm text-gray-700 mb-2"><strong>Fecha de Retorno Teórico:</strong> {new Date(prestamoActivo.fechaFinSolicitada).toLocaleDateString('es-ES')}</p>
+            <p className="text-sm text-gray-700"><strong>Estado:</strong> {prestamoActivo.estado}</p>
+          </div>
+          <p className="text-red-700 mb-6">
+            Por favor, devuelve los robots antes de crear una nueva solicitud. El personal de servicio debe confirmar la recepción.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate(`/solicitudes/${prestamoActivo.id}`)}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition"
+            >
+              Ver Solicitud Activa
+            </button>
+            <button
+              onClick={() => navigate('/solicitudes')}
+              className="px-6 py-2 text-gray-700 hover:bg-gray-200 rounded transition"
+            >
+              Volver a Solicitudes
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -193,36 +236,49 @@ export default function NuevaSolicitudPage() {
           {paso === 2 && (
             <div>
               <h2 className="text-xl font-semibold mb-4">Fechas de préstamo</h2>
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4 text-sm text-yellow-800">
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-6 text-sm text-yellow-800">
                 ⚠️ <strong>Mínimo {diasMin} días de anticipación.</strong> Fecha mínima: {new Date(fechaMinimaStr).toLocaleDateString('es-ES')}
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de inicio</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">📅 Fecha de inicio</label>
                   <input
                     type="date"
                     value={fechaInicio}
                     min={fechaMinimaStr}
                     onChange={(e) => setFechaInicio(e.target.value)}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teradyne-secondary focus:ring-2 focus:ring-teradyne-secondary outline-none text-lg"
                   />
+                  {fechaInicio && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      {new Date(fechaInicio).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  )}
                 </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded p-4 text-center">
+                  <p className="text-sm text-blue-700 font-medium">
+                    {diasDuracion > 0 ? `Duración seleccionada: ${diasDuracion} días` : 'Selecciona ambas fechas'}
+                  </p>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de fin</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">📅 Fecha de fin</label>
                   <input
                     type="date"
                     value={fechaFin}
                     min={fechaInicio || fechaMinimaStr}
                     onChange={(e) => setFechaFin(e.target.value)}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teradyne-secondary focus:ring-2 focus:ring-teradyne-secondary outline-none text-lg"
                   />
+                  {fechaFin && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      {new Date(fechaFin).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  )}
                 </div>
               </div>
-              {diasDuracion > 0 && (
-                <div className="mt-4 text-sm text-gray-600">
-                  Duración: <strong>{diasDuracion} días</strong>
-                </div>
-              )}
             </div>
           )}
 
