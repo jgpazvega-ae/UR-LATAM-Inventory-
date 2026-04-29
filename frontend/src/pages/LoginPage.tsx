@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
@@ -8,25 +8,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [regions, setRegions] = useState<any[]>([])
   const navigate = useNavigate()
   const { login } = useAuth()
   const { currentRegion, currentIdioma, setRegion, setIdioma } = useRegionLanguage()
-
-  useEffect(() => {
-    const cargarRegiones = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/regiones/publicas')
-        if (response.ok) {
-          const data = await response.json()
-          setRegions(data)
-        }
-      } catch (error) {
-        console.error('Error cargando regiones:', error)
-      }
-    }
-    cargarRegiones()
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

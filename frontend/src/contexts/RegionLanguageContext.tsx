@@ -1,10 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-interface Region {
-  codigo: string;
-  nombre: string;
-}
-
 interface RegionLanguageContextType {
   currentRegion: string;
   currentIdioma: string;

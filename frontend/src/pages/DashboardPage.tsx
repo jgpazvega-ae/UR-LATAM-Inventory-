@@ -36,7 +36,7 @@ export default function DashboardPage() {
           return s.estado === 'ACTIVO' && fechaFin < ahora
         })
 
-        const enPrestamo = todas.filter((s: any) => s.estado === 'ACTIVO').map(s => ({
+        const enPrestamo = todas.filter((s: any) => s.estado === 'ACTIVO').map((s: any) => ({
           ...s,
           diasRestantes: Math.ceil((new Date(s.fechaFinSolicitada).getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24))
         }))
