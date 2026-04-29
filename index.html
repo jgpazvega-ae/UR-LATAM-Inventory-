@@ -1228,6 +1228,36 @@
         return;
       }
 
+      // Validate minimum 7 business days from today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date(fechaInicio);
+      start.setHours(0, 0, 0, 0);
+
+      let businessDaysCount = 0;
+      let currentDate = new Date(today);
+      while (businessDaysCount < 7 && currentDate <= start) {
+        const dayOfWeek = currentDate.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          businessDaysCount++;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      if (businessDaysCount < 7 || start < today) {
+        const minDate = new Date(today);
+        let daysAdded = 0;
+        while (daysAdded < 7) {
+          minDate.setDate(minDate.getDate() + 1);
+          const dayOfWeek = minDate.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            daysAdded++;
+          }
+        }
+        showAlert(`La fecha de inicio debe ser mínimo 7 días laborales desde hoy. Mínimo: ${minDate.toISOString().split('T')[0]}`, 'error');
+        return;
+      }
+
       // Validate max 2 months (60 days)
       const start = new Date(fechaInicio);
       const end = new Date(fechaFin);
