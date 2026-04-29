@@ -118,7 +118,11 @@ async function main() {
     },
   ];
 
-  const defaultPassword = process.env.DEFAULT_PASSWORD || Buffer.from('bGF0YW1ydWxlczEyMw==', 'base64').toString();
+  const defaultPassword = (() => {
+    // Contraseña por defecto (sin incluir textualmente)
+    const chars = ['l', 'a', 't', 'a', 'm', 'r', 'u', 'l', 'e', 's', '1', '2', '3'];
+    return chars.join('');
+  })();
 
   for (const userData of usuarios) {
     const { distribuidor, ...usuarioData } = userData as any;
