@@ -1,199 +1,167 @@
-# Guía de Testing - UR LATAM Inventory
+# 🧪 Testing Guide - Multi-Region Inventory System
 
-## 1. Validación de Cambios en la Interfaz (index.html)
+## Prerequisites
 
-### A. Prueba de Selección de Fechas (FIX CRÍTICO)
-1. Login a la aplicación con cualquier usuario vendedor
-2. Haz click en "📋 Solicitudes Demo"
-3. Haz click en "+ Nueva Solicitud"
-4. **VERIFICA:**
-   - Campo "Fecha de Inicio" (selector calendario) ✓
-   - Campo "Fecha de Fin" (selector calendario) ✓
-   - **NO** debe aparecer "Duración (días)"
-   - Fecha de fin predeterminada debe ser 7 días después del inicio
+- PostgreSQL running with `ur_latam_inventory` database populated via seed
+- Backend running on `http://localhost:5000`
+- Frontend running on `http://localhost:3000`
+- Test users created via seed (MX and BR regions)
 
-### B. Validaciones de Fechas
-1. Intenta seleccionar fecha fin anterior a fecha inicio
-   - **ESPERADO:** Error: "La fecha de fin debe ser posterior a la fecha de inicio"
+## Test Scenarios
 
-2. Intenta seleccionar rango mayor a 2 meses (>60 días)
-   - **ESPERADO:** Error: "La duración máxima permitida es de 2 meses (60 días)"
+### 1. Multi-Region Isolation
 
-3. Intenta crear dos solicitudes con fechas superpuestas para el mismo robot
-   - **ESPERADO:** Error: "Este robot ya tiene una reserva en las fechas seleccionadas"
+#### Objective: Verify users can only see data from their region
 
-### C. Dashboard de Préstamos (solo ADMIN/GERENTE_VENTAS)
-1. Login como ADMIN o como Uriel (GERENTE_VENTAS)
-2. Ve al Dashboard
-3. **VERIFICA:**
-   - Sección "Robots en Préstamo" debe ser visible
-   - Muestra contador de "Préstamos Activos"
-   - Muestra contador de "Préstamos Vencidos"
-   - Tabla con columnas: Robot, Solicitado por, Inicio, Fin, Estado
-
-### D. Notificaciones In-App
-1. Login como usuario de SERVICIO
-2. **VERIFICA:**
-   - Bell icon (🔔) en el header superior derecho
-   - Badge rojo con número de notificaciones no leídas
-3. Hacer que un ADMIN apruebe una solicitud
-   - **ESPERADO:** El usuario de SERVICIO recibe notificación "📦 Robot listo para recoger"
-
-### E. Botón "Marcar como Recolectado"
-1. Login como ADMIN, aprueba una solicitud
-2. Login como usuario de SERVICIO
-3. Ve a "Solicitudes Demo"
-4. **VERIFICA:**
-   - Solicitud APROBADA debe mostrar botón "✅ Marcar como recolectado"
-   - Al hacer click, el botón desaparece y estado cambia a RECOLECTADO
-
----
-
-## 2. Testing de Email (Backend)
-
-### Configuración Requerida
-1. Crea un archivo `.env` en `/backend`:
-```
-DATABASE_URL="postgresql://user:password@localhost:5432/ur_latam_inventory"
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=tu-email-gmail@gmail.com
-EMAIL_PASS=tu-app-password-gmail
-EMAIL_FROM=noreply@teradyne-robotics.com
-FRONTEND_URL=http://localhost:3000
-PORT=5000
-NODE_ENV=development
-```
-
-**Nota para Gmail:**
-- Habilita "Acceso a aplicaciones menos seguras" O
-- Usa "Contraseñas de aplicación" (recomendado)
-
-### Testing del Endpoint
-1. **Health Check:**
 ```bash
-curl -X GET http://localhost:5000/api/test/health
-```
-
-**Respuesta esperada:**
-```json
-{
-  "status": "ok",
-  "timestamp": "2026-04-29T...",
-  "emailConfig": {
-    "host": "smtp.gmail.com",
-    "user": "***",
-    "configured": true
-  }
-}
-```
-
-2. **Enviar Email de Prueba (requiere ser ADMIN):**
-```bash
-curl -X POST http://localhost:5000/api/test/email \
+# Terminal 1: Test MX Region User
+curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <tu-jwt-token>" \
-  -d '{"emailTo":"correo@ejemplo.com"}'
+  -d '{
+    "email": "vendedor_mx@example.com",
+    "password": "password123"
+  }'
+# Expected: Returns token with region: "MX"
+
+# Save the token from response as TOKEN_MX
+
+# List robots in MX region
+curl -X GET http://localhost:5000/api/robots \
+  -H "Authorization: Bearer $TOKEN_MX"
+# Expected: Only robots with regionId for MX
+
+# Terminal 2: Test BR Region User
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "vendedor_br@example.com",
+    "password": "password123"
+  }'
+# Save as TOKEN_BR
+
+# List robots in BR region
+curl -X GET http://localhost:5000/api/robots \
+  -H "Authorization: Bearer $TOKEN_BR"
+# Expected: Only robots with regionId for BR (different from MX)
 ```
 
-**Respuesta esperada:**
-```json
-{
-  "mensaje": "Email de prueba enviado exitosamente",
-  "emailTo": "correo@ejemplo.com",
-  "timestamp": "2026-04-29T..."
-}
-```
+**Expected Result**: Robots are properly isolated by region. MX and BR users see completely different robot lists.
 
----
+### 2. Multi-Language Support
 
-## 3. Testing de Reset de Contraseña
+#### Objective: Verify translations load correctly and can be switched
 
-### Endpoint de Reset (Backend)
 ```bash
-curl -X POST http://localhost:5000/api/usuarios/:usuarioId/resetear-password \
-  -H "Authorization: Bearer <admin-token>"
+# Get Spanish translations (default)
+curl -X GET http://localhost:5000/api/regiones/traducciones/ES \
+  -H "Authorization: Bearer $TOKEN_MX"
+# Expected: Returns full Spanish (ES) translation object
+
+# Get Portuguese translations
+curl -X GET http://localhost:5000/api/regiones/traducciones/PT \
+  -H "Authorization: Bearer $TOKEN_MX"
+# Expected: Returns full Portuguese (PT) translation object
+
+# Get English translations
+curl -X GET http://localhost:5000/api/regiones/traducciones/EN \
+  -H "Authorization: Bearer $TOKEN_MX"
+# Expected: Returns full English (EN) translation object
 ```
 
-**Respuesta:**
-```json
-{
-  "mensaje": "Contraseña reseteada para Nombre Usuario",
-  "tempPassword": "abc123def456",
-  "instrucciones": "Comparte esta contraseña temporal con el usuario..."
-}
+**Expected Result**: All three languages are available with complete translation keys.
+
+### 3. Robot Loan & Return with History
+
+#### Objective: Verify complete loan lifecycle is tracked in historial
+
+```bash
+# Create a loan request
+curl -X POST http://localhost:5000/api/prestamos \
+  -H "Authorization: Bearer $TOKEN_MX" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "robotIds": ["robot-id-1"],
+    "distribuidorId": "distribuidor-id",
+    "fechaInicio": "2026-05-15",
+    "fechaFin": "2026-05-20",
+    "motivo": "Demo para cliente"
+  }'
+# Save the ID as PRESTAMO_ID
+
+# Approve and confirm delivery
+# Check robot historial - should have PRESTAMO_INICIADO event
+curl -X GET http://localhost:5000/api/robots/robot-id-1/historial \
+  -H "Authorization: Bearer $TOKEN_MX"
 ```
 
-**Verificación:**
-- La contraseña temporal se genera aleatoriamente (diferente cada vez)
-- Se retorna una sola vez
-- El usuario debe cambiarla al siguiente login (forcePasswordReset = true)
+**Expected Result**: 
+- Loan initiation creates PRESTAMO_INICIADO event
+- Return creates PRESTAMO_DEVUELTO event
+- Historial shows complete sequence
 
----
+### 4. Robot Damage Reporting
 
-## 4. Validación de Email Format
+#### Objective: Verify damage can be reported and tracked
 
-1. Intenta crear un usuario con email inválido
-   - **ESPERADO:** Error: "Ingresa un email válido"
-2. Emails aceptados: 
-   - ✓ usuario@ejemplo.com
-   - ✓ usuario.nombre@empresa.co
-   - ✗ usuario@
-   - ✗ @ejemplo.com
-   - ✗ usuario(sin-arroba).com
+```bash
+# Report damage
+curl -X POST http://localhost:5000/api/robots/robot-id-1/reportar-dano \
+  -H "Authorization: Bearer $TOKEN_SERVICE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "descripcion": "Motor dañado",
+    "requisitos": "Reemplazo de motor"
+  }'
 
----
+# Repair the robot
+curl -X POST http://localhost:5000/api/robots/robot-id-1/reparar \
+  -H "Authorization: Bearer $TOKEN_SERVICE"
 
-## 5. Checklist de Deployment
+# Check historial for DANADO and REPARADO events
+curl -X GET http://localhost:5000/api/robots/robot-id-1/historial \
+  -H "Authorization: Bearer $TOKEN_MX"
+```
 
-- [ ] Los cambios están en rama `InventoryURLATAMDEMOS`
-- [ ] GitHub Actions workflow de deploy ha ejecutado exitosamente
-- [ ] GitHub Pages muestra los cambios (espera 1-2 minutos)
-- [ ] Puedes ver la nueva interfaz en `https://jgpazvega-ae.github.io/UR-LATAM-Inventory-/`
+**Expected Result**: Damage and repair events are properly tracked.
 
----
+### 5. Robot Report Generation
 
-## 6. Solución de Problemas
+#### Objective: Verify comprehensive robot reports
 
-### Los cambios no aparecen en la página
-1. Limpia caché del navegador (Ctrl+Shift+Delete)
-2. Abre en incógnito/privado
-3. Verifica que el push llegó a `InventoryURLATAMDEMOS`
-4. Revisa workflow status en GitHub Actions
+```bash
+curl -X GET http://localhost:5000/api/robots/robot-id-1/reportes \
+  -H "Authorization: Bearer $TOKEN_MX"
+# Expected: Includes robot details, historial, and resumen statistics
+```
 
-### El email no envía
-1. Verifica configuración en `.env`
-2. Revisa logs: `npm run dev` muestra errores de email
-3. Si usas Gmail:
-   - Habilita "Acceso a aplicaciones menos seguras" en configuración de cuenta
-   - O genera "Contraseña de aplicación" (recomendado)
+### 6. Region Access Control
 
-### Las notificaciones no llegan
-- Verifica que el usuario tenga rol SERVICIO
-- Recarga la página si la notificación no aparece inmediatamente
-- Abre el Developer Tools (F12) → Console para ver errores
+#### Objective: Verify cross-region access is blocked
 
----
+```bash
+# Try to access MX robot from BR user
+curl -X GET http://localhost:5000/api/robots/mx-robot-id \
+  -H "Authorization: Bearer $TOKEN_BR"
+# Expected: 404 error (not found)
+```
 
-## 7. Cambios Técnicos Realizados
+## Frontend Testing
 
-### Frontend (Static HTML)
-- ✓ Reemplazo de "duración en días" con "fecha fin"
-- ✓ Validación de rango (máximo 60 días)
-- ✓ Prevención de solapamiento de reservas
-- ✓ Dashboard de préstamos para admin/gerente
-- ✓ Sistema de notificaciones in-app con bell icon
-- ✓ Botón "Marcar como recolectado" para servicio
+1. Login with different region users
+2. Verify language switching works
+3. Check that historial tab shows robot events
+4. Create loan, confirm delivery, verify robot state changes
+5. Report damage and verify state becomes DANADO
+6. Repair and verify state returns to DISPONIBLE
 
-### Backend (Node.js + Prisma)
-- ✓ Campo `forcePasswordReset` en modelo Usuario
-- ✓ Endpoint `/api/usuarios/:usuarioId/resetear-password` con password temporal
-- ✓ Configuración de email (nodemailer)
-- ✓ Endpoints de testing: `/api/test/email` y `/api/test/health`
-- ✓ Validación de email format en usuario creation
-- ✓ Archivo `.env.example` con variables requeridas
+## Checklist
 
----
-
-**Última actualización:** 29 de abril de 2026
-**Estado:** ✅ Listo para testing
+- [ ] MX user sees only MX robots
+- [ ] BR user sees only BR robots
+- [ ] Language switching loads correct translations
+- [ ] Loan creates PRESTAMO_INICIADO event
+- [ ] Return creates PRESTAMO_DEVUELTO event
+- [ ] Damage report creates DANADO event
+- [ ] Repair creates REPARADO event
+- [ ] Cross-region access is blocked
+- [ ] Reports show correct statistics
