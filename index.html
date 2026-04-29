@@ -324,8 +324,51 @@
               </button>
             </div>
 
+            <div id="testEmailPanel" class="hidden mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <h4 class="font-semibold text-gray-900 mb-3">📧 Enviar Email de Prueba</h4>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Selecciona destinatario:</label>
+                  <select id="testEmailRecipient" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="">Selecciona un usuario...</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">O ingresa un email personalizado:</label>
+                  <input id="testEmailCustom" type="email" placeholder="ejemplo@correo.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <button type="button" id="sendTestEmailBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 rounded-lg transition">
+                  📨 Enviar Email de Prueba
+                </button>
+              </div>
+            </div>
+
             <div id="emailStatus" class="hidden mt-4 p-4 rounded-lg"></div>
           </form>
+        </div>
+
+        <!-- Test de Notificaciones -->
+        <div class="bg-white rounded-xl shadow p-6 mt-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">🔔 Test del Sistema de Notificaciones</h3>
+          <p class="text-sm text-gray-600 mb-4">Prueba que el sistema de notificaciones esté funcionando correctamente.</p>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Selecciona tipo de notificación:</label>
+              <select id="testNotifType" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="">-- Selecciona una opción --</option>
+                <option value="aprobacion">✅ Solicitud Aprobada (Servicio)</option>
+                <option value="rechazo">❌ Solicitud Rechazada (Vendedor)</option>
+                <option value="recoleccion">🚚 Robot Recolectado (Todos)</option>
+                <option value="entrega">📦 Robot Entregado</option>
+                <option value="devolucion">🔄 Robot Devuelto</option>
+              </select>
+            </div>
+            <button type="button" id="sendTestNotifBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2.5 rounded-lg transition">
+              📤 Enviar Notificación de Prueba
+            </button>
+            <div id="notifTestStatus" class="hidden p-4 rounded-lg text-sm"></div>
+          </div>
         </div>
       </section>
     </main>
@@ -1316,33 +1359,17 @@
         return;
       }
 
-      // Validate minimum 7 business days from today
+      // Validate minimum 7 natural days from today
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const start = new Date(fechaInicio);
       start.setHours(0, 0, 0, 0);
 
-      let businessDaysCount = 0;
-      let currentDate = new Date(today);
-      while (businessDaysCount < 7 && currentDate <= start) {
-        const dayOfWeek = currentDate.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          businessDaysCount++;
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
+      const minDate = new Date(today);
+      minDate.setDate(minDate.getDate() + 7);
 
-      if (businessDaysCount < 7 || start < today) {
-        const minDate = new Date(today);
-        let daysAdded = 0;
-        while (daysAdded < 7) {
-          minDate.setDate(minDate.getDate() + 1);
-          const dayOfWeek = minDate.getDay();
-          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-            daysAdded++;
-          }
-        }
-        showSolicitudError(`❌ La fecha de inicio debe ser mínimo 7 días laborales desde hoy.<br/>Mínimo: <strong>${minDate.toISOString().split('T')[0]}</strong>`);
+      if (start < minDate) {
+        showSolicitudError(`❌ La fecha de inicio debe ser mínimo 7 días desde hoy.<br/>Mínimo: <strong>${minDate.toISOString().split('T')[0]}</strong>`);
         return;
       }
 
@@ -1592,6 +1619,40 @@
         return;
       }
 
+      const panel = document.getElementById('testEmailPanel');
+      const recipientSelect = document.getElementById('testEmailRecipient');
+
+      // Llenar dropdown con usuarios
+      recipientSelect.innerHTML = '<option value="">Selecciona un usuario...</option>';
+      store.users.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.email;
+        option.textContent = `${user.nombre} (${user.email})`;
+        recipientSelect.appendChild(option);
+      });
+
+      panel.classList.remove('hidden');
+    }
+
+    function sendTestEmail() {
+      const config = JSON.parse(localStorage.getItem('emailConfig') || '{}');
+      const recipientSelect = document.getElementById('testEmailRecipient');
+      const customEmail = document.getElementById('testEmailCustom').value.trim();
+
+      let emailTo = recipientSelect.value || customEmail;
+
+      if (!emailTo) {
+        showAlert('Selecciona un usuario o ingresa un email', 'error');
+        return;
+      }
+
+      // Validar email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailTo)) {
+        showAlert('Ingresa un email válido', 'error');
+        return;
+      }
+
       const statusEl = document.getElementById('emailStatus');
       statusEl.classList.remove('hidden');
       statusEl.className = 'mt-4 p-4 rounded-lg bg-blue-50 border border-blue-200 text-blue-800';
@@ -1604,13 +1665,13 @@
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionStorage.getItem('token') || ''}`
         },
-        body: JSON.stringify({ emailTo: config.user })
+        body: JSON.stringify({ emailTo: emailTo })
       })
       .then(res => res.json())
       .then(data => {
         if (data.mensaje) {
           statusEl.className = 'mt-4 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800';
-          statusEl.innerHTML = `✅ Email enviado exitosamente a ${config.user}`;
+          statusEl.innerHTML = `✅ Email enviado exitosamente a <strong>${emailTo}</strong><br/>Revisa tu bandeja de entrada (puede estar en spam)`;
         } else {
           throw new Error(data.error || 'Error desconocido');
         }
@@ -1618,8 +1679,76 @@
       .catch(error => {
         // Si no hay backend disponible, mostrar mensaje informativo
         statusEl.className = 'mt-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800';
-        statusEl.innerHTML = `⚠️ Configuración guardada. El envío de emails requiere que el backend esté activo con las mismas credenciales configuradas.`;
+        statusEl.innerHTML = `⚠️ Error: El backend no está disponible o las credenciales son incorrectas.<br/>
+        <strong>Verifica que:</strong><br/>
+        1. El backend está corriendo en http://localhost:5000<br/>
+        2. Las credenciales de SMTP son correctas<br/>
+        3. El email de prueba no esté bloqueado por el servidor`;
+        console.error('Email test error:', error);
       });
+    }
+
+    function sendTestNotification() {
+      const type = document.getElementById('testNotifType').value;
+
+      if (!type) {
+        showAlert('Selecciona un tipo de notificación', 'error');
+        return;
+      }
+
+      const statusEl = document.getElementById('notifTestStatus');
+      statusEl.classList.remove('hidden');
+
+      // Mapeo de tipos a notificaciones de prueba
+      const notifMap = {
+        aprobacion: {
+          destinatarios: [store.users.find(u => u.rol === 'SERVICIO')?.id],
+          titulo: '✅ [TEST] Solicitud Aprobada',
+          mensaje: 'Esta es una notificación de prueba de solicitud aprobada.',
+          tipo: 'aprobacion'
+        },
+        rechazo: {
+          destinatarios: [currentUser.id],
+          titulo: '❌ [TEST] Solicitud Rechazada',
+          mensaje: 'Esta es una notificación de prueba de solicitud rechazada.',
+          tipo: 'rechazo'
+        },
+        recoleccion: {
+          destinatarios: store.users.map(u => u.id),
+          titulo: '🚚 [TEST] Robot Recolectado',
+          mensaje: 'Esta es una notificación de prueba de robot recolectado.',
+          tipo: 'recoleccion'
+        },
+        entrega: {
+          destinatarios: [currentUser.id],
+          titulo: '📦 [TEST] Robot Entregado',
+          mensaje: 'Esta es una notificación de prueba de entrega de robot.',
+          tipo: 'entrega'
+        },
+        devolucion: {
+          destinatarios: [currentUser.id],
+          titulo: '🔄 [TEST] Robot Devuelto',
+          mensaje: 'Esta es una notificación de prueba de devolución de robot.',
+          tipo: 'devolucion'
+        }
+      };
+
+      const notif = notifMap[type];
+      if (notif && notif.destinatarios.filter(Boolean).length > 0) {
+        addNotification(notif);
+
+        statusEl.className = 'p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm';
+        statusEl.innerHTML = `✅ Notificación de prueba enviada exitosamente.<br/>
+        <strong>Verifica el icono 🔔 en la parte superior derecha.</strong><br/>
+        Deberías ver una notificación con el mensaje: "${notif.mensaje}"`;
+
+        // Actualizar el badge y panel de notificaciones
+        renderNotifBadge();
+        renderNotifList();
+      } else {
+        statusEl.className = 'p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm';
+        statusEl.innerHTML = '❌ No hay destinatarios válidos para esta notificación.';
+      }
     }
 
     // ============ INIT ============
@@ -1655,6 +1784,8 @@
     document.getElementById('changePasswordForm').addEventListener('submit', changePassword);
     document.getElementById('emailConfigForm').addEventListener('submit', saveEmailConfig);
     document.getElementById('testEmailBtn').addEventListener('click', testEmailConfig);
+    document.getElementById('sendTestEmailBtn').addEventListener('click', sendTestEmail);
+    document.getElementById('sendTestNotifBtn').addEventListener('click', sendTestNotification);
 
     document.getElementById('notifBellBtn').addEventListener('click', () => toggleNotifPanel());
     document.getElementById('notifPanel').addEventListener('click', (e) => e.stopPropagation());
