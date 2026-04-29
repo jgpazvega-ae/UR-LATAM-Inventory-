@@ -1228,6 +1228,16 @@
         return;
       }
 
+      // Validate max 2 months (60 days)
+      const start = new Date(fechaInicio);
+      const end = new Date(fechaFin);
+      const diffTime = Math.abs(end - start);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 60) {
+        showAlert('La duración máxima permitida es de 2 meses (60 días)', 'error');
+        return;
+      }
+
       // Check for overlapping bookings
       const existingBookings = store.solicitudes.filter(s =>
         s.robotId === robotId &&
