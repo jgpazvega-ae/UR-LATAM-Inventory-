@@ -2,11 +2,10 @@ import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
-import { usuariosPorRegion, passwordDemo } from '../data/usuarios'
+import { usuariosPorRegion } from '../data/usuarios'
 
 export default function LoginPage() {
-  const [selectedUser, setSelectedUser] = useState('')
-  const [email, setEmail] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,22 +18,21 @@ export default function LoginPage() {
     [currentRegion]
   )
 
-  const handleSelectUser = (userId: string) => {
-    setSelectedUser(userId)
-    const usuario = usuariosRegion.find(u => u.id === userId)
-    if (usuario) {
-      setEmail(usuario.email)
-      setPassword(passwordDemo)
-    }
-  }
+  const usuarioSeleccionado = usuariosRegion.find(u => u.id === selectedUserId)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!usuarioSeleccionado || !password) {
+      setError('Por favor selecciona un usuario e ingresa la contraseña')
+      return
+    }
+
     setLoading(true)
 
     try {
-      await login(email, password)
+      await login(usuarioSeleccionado.email, password)
       navigate('/')
     } catch (err: any) {
       setError(err.response?.data?.error || t('login.error'))
@@ -42,8 +40,6 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
-
-  const usuarioSeleccionado = usuariosRegion.find(u => u.id === selectedUser)
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teradyne-primary to-teradyne-secondary px-4">
@@ -60,9 +56,9 @@ export default function LoginPage() {
               value={currentRegion}
               onChange={(e) => {
                 setRegion(e.target.value)
-                setSelectedUser('')
-                setEmail('')
+                setSelectedUserId('')
                 setPassword('')
+                setError('')
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teradyne-secondary focus:border-transparent outline-none text-sm"
             >
@@ -94,67 +90,57 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Usuario</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Usuario</label>
             <select
-              value={selectedUser}
-              onChange={(e) => handleSelectUser(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teradyne-secondary focus:border-transparent outline-none"
+              value={selectedUserId}
+              onChange={(e) => {
+                setSelectedUserId(e.target.value)
+                setPassword('')
+                setError('')
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teradyne-secondary focus:border-transparent outline-none text-sm"
             >
               <option value="">-- Selecciona un usuario --</option>
               {usuariosRegion.map(usuario => (
                 <option key={usuario.id} value={usuario.id}>
-                  {usuario.nombre} ({usuario.rol})
+                  {usuario.nombreCompleto}
                 </option>
               ))}
             </select>
           </div>
 
           {usuarioSeleccionado && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-gray-700">
-                <span className="font-semibold">Usuario:</span> {usuarioSeleccionado.nombre}
-              </p>
-              <p className="text-sm text-gray-700">
-                <span className="font-semibold">Rol:</span> {usuarioSeleccionado.rol.replace('_', ' ')}
-              </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+              <div>
+                <p className="text-xs text-gray-600 font-semibold">USUARIO</p>
+                <p className="text-sm font-semibold text-gray-900">{usuarioSeleccionado.nombreCompleto}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 font-semibold">CORREO</p>
+                <p className="text-sm text-gray-800">{usuarioSeleccionado.email}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 font-semibold">ROL</p>
+                <p className="text-sm text-gray-800">{usuarioSeleccionado.rol.replace('_', ' ')}</p>
+              </div>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('login.email')}</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={!!selectedUser}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teradyne-secondary focus:border-transparent outline-none disabled:bg-gray-100"
-              placeholder="correo@empresa.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('login.password')}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={!!selectedUser}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teradyne-secondary focus:border-transparent outline-none disabled:bg-gray-100"
+              disabled={!usuarioSeleccionado}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teradyne-secondary focus:border-transparent outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
               placeholder="••••••••"
             />
           </div>
 
-          {selectedUser && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-xs text-yellow-800">
-              Demo: Contraseña: <span className="font-mono font-bold">{passwordDemo}</span>
-            </div>
-          )}
-
           <button
             type="submit"
-            disabled={loading || !email || !password}
+            disabled={loading || !usuarioSeleccionado || !password}
             className="w-full bg-teradyne-secondary hover:bg-blue-600 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? t('login.signing') : t('login.signin')}
@@ -168,15 +154,6 @@ export default function LoginPage() {
               {t('login.register')}
             </Link>
           </p>
-        </div>
-
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
-          <p className="font-semibold mb-2">Demo Info:</p>
-          <ul className="space-y-1">
-            <li>✓ Selecciona una región para ver usuarios</li>
-            <li>✓ Elige un usuario para precargarlo</li>
-            <li>✓ Admins pueden agregar robots y personal</li>
-          </ul>
         </div>
       </div>
     </div>
