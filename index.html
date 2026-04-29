@@ -84,6 +84,7 @@
           <button data-tab="dashboard" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">📊 Dashboard</button>
           <button data-tab="robots" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">🤖 Robots</button>
           <button data-tab="solicitudes" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">📋 Solicitudes Demo</button>
+          <button data-tab="historial" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">📚 Historial de Demos</button>
           <button id="usuariosTab" data-tab="usuarios" class="tab-btn hidden px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">👥 Usuarios</button>
           <button id="configTab" data-tab="config" class="tab-btn hidden px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">⚙️ Configuración</button>
           <button data-tab="perfil" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent hover:bg-white/5">👤 Mi Perfil</button>
@@ -227,6 +228,13 @@
         </div>
       </section>
 
+      <!-- Historial de Demos Tab -->
+      <section id="tab-historial" class="hidden">
+        <h2 class="text-3xl font-bold text-gray-900 mb-2">Historial de Demos</h2>
+        <p class="text-gray-600 mb-6">Registro de todas las demostraciones completadas</p>
+        <div id="historialContainer" class="space-y-4"></div>
+      </section>
+
       <!-- Mi Perfil Tab -->
       <section id="tab-perfil" class="hidden">
         <h2 class="text-3xl font-bold text-gray-900 mb-6">Mi Perfil</h2>
@@ -363,6 +371,11 @@
                 <option value="entrega">📦 Robot Entregado</option>
                 <option value="devolucion">🔄 Robot Devuelto</option>
               </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Email para probar (opcional):</label>
+              <input id="testNotifEmail" type="email" placeholder="ejemplo@correo.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              <p class="text-xs text-gray-500 mt-1">Si ingresas un email, se enviará una solicitud HTTP GET para validar si el email es alcanzable</p>
             </div>
             <button type="button" id="sendTestNotifBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2.5 rounded-lg transition">
               📤 Enviar Notificación de Prueba
@@ -848,7 +861,7 @@
         return;
       }
 
-      ['dashboard', 'robots', 'solicitudes', 'usuarios', 'config', 'perfil'].forEach(t => {
+      ['dashboard', 'robots', 'solicitudes', 'historial', 'usuarios', 'config', 'perfil'].forEach(t => {
         document.getElementById('tab-' + t).classList.add('hidden');
       });
       document.getElementById('tab-' + tab).classList.remove('hidden');
@@ -864,6 +877,7 @@
       if (tab === 'robots') renderRobots();
       if (tab === 'usuarios') renderUsers();
       if (tab === 'solicitudes') renderSolicitudes();
+      if (tab === 'historial') renderHistorial();
       if (tab === 'config') loadEmailConfig();
       if (tab === 'perfil') renderPerfil();
     }
@@ -1240,7 +1254,9 @@
     // ============ SOLICITUDES DEMO ============
     function renderSolicitudes() {
       const canManage = canManageSolicitud();
-      const solicitudes = canManage ? store.solicitudes : store.solicitudes.filter(s => s.vendedorId === currentUser.id);
+      let solicitudes = canManage ? store.solicitudes : store.solicitudes.filter(s => s.vendedorId === currentUser.id);
+      // Filtrar solo solicitudes activas (no completadas ni rechazadas)
+      solicitudes = solicitudes.filter(s => s.estado !== 'COMPLETADO' && s.estado !== 'RECHAZADA');
 
       document.getElementById('solicitudesCount').textContent = solicitudes.length;
 
@@ -1315,6 +1331,75 @@
       document.querySelectorAll('[data-robot-disponible]').forEach(btn => {
         btn.addEventListener('click', () => markRobotAsAvailable(btn.dataset.robotDisponible));
       });
+    }
+
+    function renderHistorial() {
+      const canManage = canManageSolicitud();
+      let historial = canManage ? store.solicitudes : store.solicitudes.filter(s => s.vendedorId === currentUser.id);
+      // Filtrar solo solicitudes completadas o rechazadas
+      historial = historial.filter(s => s.estado === 'COMPLETADO' || s.estado === 'RECHAZADA');
+      // Ordenar por fecha de creación descendente
+      historial = historial.sort((a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion));
+
+      if (historial.length === 0) {
+        document.getElementById('historialContainer').innerHTML = '<p class="text-gray-500 text-center py-8">No hay demostraciones en el historial</p>';
+        return;
+      }
+
+      const estadoColor = {
+        COMPLETADO: 'bg-green-100 text-green-800',
+        RECHAZADA: 'bg-red-100 text-red-800',
+      };
+
+      document.getElementById('historialContainer').innerHTML = historial.map(s => {
+        const robot = store.robots.find(r => r.id === s.robotId);
+        const vendedor = store.users.find(u => u.id === s.vendedorId);
+        const createdDate = new Date(s.fechaCreacion).toLocaleDateString('es-ES');
+
+        return `
+          <div class="bg-white rounded-xl shadow p-6">
+            <div class="flex flex-wrap items-start justify-between gap-2 mb-4">
+              <div>
+                <h3 class="text-lg font-bold text-gray-900">${robot?.numeroSerie} - ${robot?.modelo}</h3>
+                <p class="text-sm text-gray-600">Solicitado por: ${vendedor?.nombre}</p>
+              </div>
+              <span class="px-3 py-1 rounded-full text-sm font-medium ${estadoColor[s.estado] || 'bg-gray-100'}">${s.estado}</span>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p class="text-xs text-gray-600 font-semibold">Fecha Solicitada</p>
+                <p class="text-sm font-semibold text-gray-900">${createdDate}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-600 font-semibold">Fecha Inicio Demo</p>
+                <p class="text-sm font-semibold text-gray-900">${s.fechaInicio}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-600 font-semibold">Fecha Fin Demo</p>
+                <p class="text-sm font-semibold text-gray-900">${s.fechaFin}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-600 font-semibold">Duración</p>
+                <p class="text-sm font-semibold text-gray-900">${Math.ceil((new Date(s.fechaFin) - new Date(s.fechaInicio)) / (1000 * 60 * 60 * 24))} días</p>
+              </div>
+            </div>
+
+            ${s.observaciones ? `<p class="text-sm text-gray-700 mb-4"><strong>Observaciones:</strong> ${s.observaciones}</p>` : ''}
+
+            ${s.pdfVendedor || s.pdfUriel || s.pdfServicio ? `
+              <div class="pt-4 border-t border-gray-200 mt-4">
+                <p class="text-sm font-semibold text-gray-900 mb-3">📄 Documentos Adjuntos:</p>
+                <div class="flex flex-wrap gap-2">
+                  ${s.pdfVendedor ? `<a href="${s.pdfVendedor}" class="inline-block px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium">📎 PDF Solicitud</a>` : ''}
+                  ${s.pdfUriel ? `<a href="${s.pdfUriel}" class="inline-block px-4 py-2 bg-purple-50 border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-100 transition text-sm font-medium">📎 PDF Admin</a>` : ''}
+                  ${s.pdfServicio ? `<a href="${s.pdfServicio}" class="inline-block px-4 py-2 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition text-sm font-medium">📎 PDF Confirmación</a>` : ''}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
     }
 
     function openSolicitudModal() {
@@ -1767,6 +1852,7 @@
 
     function sendTestNotification() {
       const type = document.getElementById('testNotifType').value;
+      const testEmail = document.getElementById('testNotifEmail').value.trim();
 
       if (!type) {
         showAlert('Selecciona un tipo de notificación', 'error');
@@ -1814,10 +1900,52 @@
       if (notif && notif.destinatarios.filter(Boolean).length > 0) {
         addNotification(notif);
 
-        statusEl.className = 'p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm';
-        statusEl.innerHTML = `✅ Notificación de prueba enviada exitosamente.<br/>
+        let message = `✅ <strong>Notificación de prueba enviada exitosamente.</strong><br/>
         <strong>Verifica el icono 🔔 en la parte superior derecha.</strong><br/>
         Deberías ver una notificación con el mensaje: "${notif.mensaje}"`;
+
+        // Si hay email, intentar enviar una prueba
+        if (testEmail) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(testEmail)) {
+            statusEl.className = 'p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm';
+            statusEl.innerHTML = '❌ Email inválido. Por favor ingresa un email válido (ejemplo@dominio.com)';
+            return;
+          }
+
+          message += `<br/><br/><strong>Prueba de email:</strong><br/>`;
+          statusEl.className = 'p-4 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-sm';
+          statusEl.innerHTML = message + `<br/>⏳ Intentando enviar notificación a: <strong>${testEmail}</strong>...`;
+
+          // Intentar enviar email de prueba
+          fetch('/api/test/email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${sessionStorage.getItem('token') || ''}`
+            },
+            body: JSON.stringify({ emailTo: testEmail })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.mensaje) {
+              statusEl.className = 'p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm';
+              statusEl.innerHTML = message + `<br/>✅ <strong>Email enviado a: ${testEmail}</strong><br/>
+              Revisa tu bandeja de entrada (puede estar en SPAM)`;
+            } else {
+              throw new Error(data.error || 'Error desconocido');
+            }
+          })
+          .catch(error => {
+            statusEl.className = 'p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm';
+            statusEl.innerHTML = message + `<br/>⚠️ <strong>Email no se pudo enviar:</strong><br/>
+            El backend no está disponible o las credenciales SMTP son incorrectas.<br/>
+            La notificación local SÍ fue enviada (verifica el 🔔)`;
+          });
+        } else {
+          statusEl.className = 'p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm';
+          statusEl.innerHTML = message;
+        }
 
         // Actualizar el badge y panel de notificaciones
         renderNotifBadge();
