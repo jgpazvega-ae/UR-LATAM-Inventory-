@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - InventoryURLATAMDEMOS
       - claude/inventory-web-interface-UXcYg
   workflow_dispatch:
 
