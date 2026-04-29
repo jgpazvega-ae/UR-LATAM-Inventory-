@@ -1292,6 +1292,13 @@
                 </button>
               </div>
             ` : ''}
+            ${isServicio() && s.estado === 'RECOLECTADO' ? `
+              <div class="pt-4 border-t border-gray-200">
+                <button data-robot-disponible="${s.id}" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                  ✔️ Verificado - Devolver a Disponible
+                </button>
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');
@@ -1304,6 +1311,9 @@
       });
       document.querySelectorAll('[data-listo-solicitud]').forEach(btn => {
         btn.addEventListener('click', () => markRobotAsCollected(btn.dataset.listoSolicitud));
+      });
+      document.querySelectorAll('[data-robot-disponible]').forEach(btn => {
+        btn.addEventListener('click', () => markRobotAsAvailable(btn.dataset.robotDisponible));
       });
     }
 
@@ -1544,6 +1554,37 @@
       }
     }
 
+    function markRobotAsAvailable(id) {
+      const idx = store.solicitudes.findIndex(s => s.id === id);
+      if (idx >= 0) {
+        const s = store.solicitudes[idx];
+        s.estado = 'COMPLETADO';
+        const robot = store.robots.find(r => r.id === s.robotId);
+        const vendedor = store.users.find(u => u.id === s.vendedorId);
+
+        // Actualizar robot a disponible
+        if (robot) {
+          robot.estado = 'DISPONIBLE';
+        }
+
+        saveStore(store);
+
+        // Notificar al vendedor
+        if (vendedor) {
+          addNotification({
+            destinatarios: [vendedor.id],
+            titulo: '✅ Demo completada - Robot devuelto',
+            mensaje: `El robot ${robot?.numeroSerie} (${robot?.modelo}) ha sido verificado y devuelto a inventario. La demo ha finalizado.`,
+            tipo: 'devolucion',
+            solicitudId: id
+          });
+        }
+
+        showAlert(`✅ Robot marcado como disponible. ${vendedor?.nombre} ha sido notificado.`);
+        renderSolicitudes();
+      }
+    }
+
     // ============ PERFIL ============
     function renderPerfil() {
       document.getElementById('profileNombre').textContent = currentUser.nombre;
@@ -1613,14 +1654,9 @@
 
     function testEmailConfig() {
       const config = JSON.parse(localStorage.getItem('emailConfig') || '{}');
-
-      if (!config.user) {
-        showAlert('Primero configura los datos de email', 'error');
-        return;
-      }
-
       const panel = document.getElementById('testEmailPanel');
       const recipientSelect = document.getElementById('testEmailRecipient');
+      const statusEl = document.getElementById('emailStatus');
 
       // Llenar dropdown con usuarios
       recipientSelect.innerHTML = '<option value="">Selecciona un usuario...</option>';
@@ -1631,32 +1667,63 @@
         recipientSelect.appendChild(option);
       });
 
+      // Mostrar panel siempre
       panel.classList.remove('hidden');
+
+      // Si no hay configuración, mostrar advertencia
+      if (!config.user || !config.host) {
+        statusEl.classList.remove('hidden');
+        statusEl.className = 'mt-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm';
+        statusEl.innerHTML = `⚠️ <strong>Primero debes configurar SMTP:</strong><br/>
+        1. Completa los campos de configuración (Host, Puerto, Email, Contraseña)<br/>
+        2. Haz click en "✅ Guardar Configuración"<br/>
+        3. Luego podrás enviar emails de prueba`;
+      } else {
+        statusEl.classList.add('hidden');
+      }
     }
 
     function sendTestEmail() {
       const config = JSON.parse(localStorage.getItem('emailConfig') || '{}');
       const recipientSelect = document.getElementById('testEmailRecipient');
       const customEmail = document.getElementById('testEmailCustom').value.trim();
+      const statusEl = document.getElementById('emailStatus');
 
       let emailTo = recipientSelect.value || customEmail;
 
+      // Validar configuración SMTP
+      if (!config.user || !config.host) {
+        statusEl.classList.remove('hidden');
+        statusEl.className = 'mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm';
+        statusEl.innerHTML = `❌ <strong>Configuración SMTP incompleta:</strong><br/>
+        Por favor completa todos los campos de configuración primero:<br/>
+        ✓ Host SMTP<br/>
+        ✓ Puerto<br/>
+        ✓ Email (Usuario)<br/>
+        ✓ Contraseña/AppPassword<br/>
+        ✓ Email Remitente`;
+        return;
+      }
+
       if (!emailTo) {
-        showAlert('Selecciona un usuario o ingresa un email', 'error');
+        statusEl.classList.remove('hidden');
+        statusEl.className = 'mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm';
+        statusEl.innerHTML = '❌ Selecciona un usuario de la lista o ingresa un email personalizado';
         return;
       }
 
       // Validar email
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(emailTo)) {
-        showAlert('Ingresa un email válido', 'error');
+        statusEl.classList.remove('hidden');
+        statusEl.className = 'mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm';
+        statusEl.innerHTML = '❌ Ingresa un email válido (ejemplo: usuario@dominio.com)';
         return;
       }
 
-      const statusEl = document.getElementById('emailStatus');
       statusEl.classList.remove('hidden');
       statusEl.className = 'mt-4 p-4 rounded-lg bg-blue-50 border border-blue-200 text-blue-800';
-      statusEl.innerHTML = '⏳ Enviando email de prueba...';
+      statusEl.innerHTML = '⏳ Enviando email de prueba a: <strong>' + emailTo + '</strong>...';
 
       // Intentar enviar a través del API si está disponible
       fetch('/api/test/email', {
@@ -1670,20 +1737,30 @@
       .then(res => res.json())
       .then(data => {
         if (data.mensaje) {
-          statusEl.className = 'mt-4 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800';
-          statusEl.innerHTML = `✅ Email enviado exitosamente a <strong>${emailTo}</strong><br/>Revisa tu bandeja de entrada (puede estar en spam)`;
+          statusEl.className = 'mt-4 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm';
+          statusEl.innerHTML = `✅ <strong>¡Email enviado exitosamente!</strong><br/>
+          Destinatario: <strong>${emailTo}</strong><br/>
+          <br/>
+          <strong>Próximos pasos:</strong><br/>
+          1. Revisa tu bandeja de entrada en ${emailTo}<br/>
+          2. Si no aparece, revisa la carpeta de SPAM<br/>
+          3. Los emails automáticos del sistema ahora funcionarán correctamente`;
         } else {
           throw new Error(data.error || 'Error desconocido');
         }
       })
       .catch(error => {
         // Si no hay backend disponible, mostrar mensaje informativo
-        statusEl.className = 'mt-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800';
-        statusEl.innerHTML = `⚠️ Error: El backend no está disponible o las credenciales son incorrectas.<br/>
+        statusEl.className = 'mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm';
+        statusEl.innerHTML = `❌ <strong>No se puede conectar al backend</strong><br/>
+        <br/>
         <strong>Verifica que:</strong><br/>
-        1. El backend está corriendo en http://localhost:5000<br/>
-        2. Las credenciales de SMTP son correctas<br/>
-        3. El email de prueba no esté bloqueado por el servidor`;
+        1. ✓ El backend está corriendo en http://localhost:5000<br/>
+        2. ✓ Las credenciales de SMTP en la configuración son correctas<br/>
+        3. ✓ El puerto SMTP (ej: 587 para Gmail) es correcto<br/>
+        4. ✓ Si usas Gmail, la contraseña debe ser un App Password (no la contraseña normal)<br/>
+        <br/>
+        <strong>Error técnico:</strong> ${error.message}`;
         console.error('Email test error:', error);
       });
     }
