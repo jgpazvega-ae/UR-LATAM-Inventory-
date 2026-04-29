@@ -88,6 +88,22 @@ export const crearSolicitud = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
+    // Validar que no haya préstamos activos sin confirmar recepción
+    const prestamoActivo = await prisma.prestamo.findFirst({
+      where: {
+        usuarioSolicitanteId: req.user!.id,
+        estado: 'ACTIVO',
+        estadoRecepcion: null,
+      },
+    });
+
+    if (prestamoActivo) {
+      return res.status(400).json({
+        error: 'No puedes crear una nueva solicitud mientras tengas un préstamo activo sin confirmar recepción. Por favor devuelve los robots primero.',
+        prestamoActivoId: prestamoActivo.id,
+      });
+    }
+
     const config = await prisma.configuracion.findFirst();
     const diasMin = config?.diasMinimosAnticipacion || 7;
     const fechaInicioDate = new Date(fechaInicio);
@@ -135,6 +151,7 @@ export const crearSolicitud = async (req: AuthRequest, res: Response) => {
       .map((d) => `${d.robot.numeroSerie} (${d.robot.modelo || ''})`)
       .join(', ');
 
+    // Email al solicitante
     await sendEmail({
       to: solicitud.usuarioSolicitante.email,
       cc: config?.correoAdminPrincipal,
@@ -148,6 +165,26 @@ export const crearSolicitud = async (req: AuthRequest, res: Response) => {
         motivo,
       }),
     });
+
+    // Email a gerente de ventas para aprobación
+    const gerenteVentas = await prisma.usuario.findFirst({
+      where: { rol: 'GERENTE_VENTAS', activo: true },
+    });
+
+    if (gerenteVentas) {
+      await sendEmail({
+        to: gerenteVentas.email,
+        subject: `⏳ Aprobación Requerida - Solicitud ${numeroSolicitud}`,
+        html: templates.solicitudParaAprobacion({
+          numeroSolicitud,
+          solicitante: solicitud.usuarioSolicitante.nombreCompleto,
+          robots: robotsString,
+          fechaInicio: formatFecha(fechaInicioDate),
+          fechaFin: formatFecha(fechaFinDate),
+          motivo,
+        }),
+      });
+    }
 
     return res.status(201).json(solicitud);
   } catch (error) {
@@ -177,6 +214,7 @@ export const aprobarSolicitud = async (req: AuthRequest, res: Response) => {
       .map((d) => `${d.robot.numeroSerie} (${d.robot.modelo || ''})`)
       .join(', ');
 
+    // Email al solicitante
     await sendEmail({
       to: solicitud.usuarioSolicitante.email,
       subject: `✅ Solicitud Aprobada - ${solicitud.numeroSolicitud}`,
@@ -188,6 +226,26 @@ export const aprobarSolicitud = async (req: AuthRequest, res: Response) => {
         fechaFin: formatFecha(solicitud.fechaFinSolicitada),
       }),
     });
+
+    // Email a personal de servicio
+    const personalServicio = await prisma.usuario.findFirst({
+      where: { rol: 'SERVICIO', activo: true },
+    });
+
+    if (personalServicio) {
+      await sendEmail({
+        to: personalServicio.email,
+        subject: `✅ Solicitud Aprobada - Preparar Entrega ${solicitud.numeroSolicitud}`,
+        html: templates.resultadoSolicitud({
+          numeroSolicitud: solicitud.numeroSolicitud,
+          solicitante: solicitud.usuarioSolicitante.nombreCompleto,
+          estado: 'APROBADO',
+          robots: robotsString,
+          fechaInicio: formatFecha(solicitud.fechaInioSolicitada),
+          fechaFin: formatFecha(solicitud.fechaFinSolicitada),
+        }),
+      });
+    }
 
     return res.json(solicitud);
   } catch {
@@ -207,18 +265,47 @@ export const rechazarSolicitud = async (req: AuthRequest, res: Response) => {
         fechaAprobacion: new Date(),
         usuarioAprobadorId: req.user!.id,
       },
-      include: { usuarioSolicitante: true },
+      include: {
+        usuarioSolicitante: true,
+        detalles: { include: { robot: true } },
+      },
     });
 
+    const robotsString = solicitud.detalles
+      .map((d) => `${d.robot.numeroSerie} (${d.robot.modelo || ''})`)
+      .join(', ');
+
+    // Email al solicitante
     await sendEmail({
       to: solicitud.usuarioSolicitante.email,
-      subject: `Solicitud Rechazada - ${solicitud.numeroSolicitud}`,
+      subject: `❌ Solicitud Rechazada - ${solicitud.numeroSolicitud}`,
       html: templates.solicitudRechazada({
         numeroSolicitud: solicitud.numeroSolicitud,
         nombre: solicitud.usuarioSolicitante.nombreCompleto,
         motivo: motivoRechazo || 'No se especificó motivo',
       }),
     });
+
+    // Email a personal de servicio (informativo)
+    const personalServicio = await prisma.usuario.findFirst({
+      where: { rol: 'SERVICIO', activo: true },
+    });
+
+    if (personalServicio) {
+      await sendEmail({
+        to: personalServicio.email,
+        subject: `❌ Solicitud Rechazada - ${solicitud.numeroSolicitud}`,
+        html: templates.resultadoSolicitud({
+          numeroSolicitud: solicitud.numeroSolicitud,
+          solicitante: solicitud.usuarioSolicitante.nombreCompleto,
+          estado: 'RECHAZADO',
+          robots: robotsString,
+          fechaInicio: formatFecha(solicitud.fechaInioSolicitada),
+          fechaFin: formatFecha(solicitud.fechaFinSolicitada),
+          motivo: motivoRechazo,
+        }),
+      });
+    }
 
     return res.json(solicitud);
   } catch {
