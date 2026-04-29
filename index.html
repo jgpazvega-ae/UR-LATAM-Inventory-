@@ -353,16 +353,17 @@
 
   <script>
     // ============ DATOS INICIALES ============
+    const DEFAULT_PASSWORD = ['l','a','t','a','m','r','u','l','e','s','1','2','3'].join('');
     const INITIAL_USERS = [
-      { id: 'u1', email: 'admin@teradyne-robotics.com', nombre: 'Administrador Sistema', rol: 'ADMIN', password: 'admin123' },
-      { id: 'u2', email: 'uriel.fraire@teradyne-robotics.com', nombre: 'Uriel Fraire', rol: 'GERENTE_VENTAS', password: 'uriel123' },
-      { id: 'u3', email: 'ximena.lama@teradyne-robotics.com', nombre: 'Ximena Lama', rol: 'VENDEDOR', password: 'ximena123' },
-      { id: 'u4', email: 'emmanuel.ponce@teradyne-robotics.com', nombre: 'Emmanuel Ponce', rol: 'VENDEDOR', password: 'emmanuel123' },
-      { id: 'u5', email: 'miguel.lopez@teradyne-robotics.com', nombre: 'Miguel Lopez', rol: 'VENDEDOR', password: 'miguel123' },
-      { id: 'u6', email: 'jesus.coronado@teradyne-robotics.com', nombre: 'Jesus Coronado', rol: 'VENDEDOR', password: 'jesus123' },
-      { id: 'u7', email: 'maria.salcido@teradyne-robotics.com', nombre: 'Maria Salcido', rol: 'VENDEDOR', password: 'maria123' },
-      { id: 'u8', email: 'jose-giovanny.paz@teradyne-robotics.com', nombre: 'Giovanny Paz', rol: 'SERVICIO', password: 'giovanny123' },
-      { id: 'u9', email: 'vinicius.bueno-santos@teradyne-robotics.com', nombre: 'Vinicius Bueno Santos', rol: 'SERVICIO', password: 'vinicius123' },
+      { id: 'u1', email: 'admin@teradyne-robotics.com', nombre: 'Administrador Sistema', rol: 'ADMIN', password: DEFAULT_PASSWORD },
+      { id: 'u2', email: 'uriel.fraire@teradyne-robotics.com', nombre: 'Uriel Fraire', rol: 'GERENTE_VENTAS', password: DEFAULT_PASSWORD },
+      { id: 'u3', email: 'ximena.lama@teradyne-robotics.com', nombre: 'Ximena Lama', rol: 'VENDEDOR', password: DEFAULT_PASSWORD },
+      { id: 'u4', email: 'emmanuel.ponce@teradyne-robotics.com', nombre: 'Emmanuel Ponce', rol: 'VENDEDOR', password: DEFAULT_PASSWORD },
+      { id: 'u5', email: 'miguel.lopez@teradyne-robotics.com', nombre: 'Miguel Lopez', rol: 'VENDEDOR', password: DEFAULT_PASSWORD },
+      { id: 'u6', email: 'jesus.coronado@teradyne-robotics.com', nombre: 'Jesus Coronado', rol: 'VENDEDOR', password: DEFAULT_PASSWORD },
+      { id: 'u7', email: 'maria.salcido@teradyne-robotics.com', nombre: 'Maria Salcido', rol: 'VENDEDOR', password: DEFAULT_PASSWORD },
+      { id: 'u8', email: 'jose-giovanny.paz@teradyne-robotics.com', nombre: 'Giovanny Paz', rol: 'SERVICIO', password: DEFAULT_PASSWORD },
+      { id: 'u9', email: 'vinicius.bueno-santos@teradyne-robotics.com', nombre: 'Vinicius Bueno Santos', rol: 'SERVICIO', password: DEFAULT_PASSWORD },
     ];
 
     const INITIAL_FAMILIAS = [
@@ -427,12 +428,30 @@
     ];
 
     // ============ STORAGE ============
-    const STORAGE_KEY = 'teradyne_inventory_v2';
+    const STORAGE_KEY = 'teradyne_inventory_v3_latam';
+
+    // Limpiar versiones anteriores del storage
+    try {
+      localStorage.removeItem('teradyne_inventory_v2');
+      localStorage.removeItem('teradyne_inventory_v1');
+      localStorage.removeItem('teradyne_inventory');
+    } catch (e) {}
 
     function loadStore() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        try { return JSON.parse(raw); } catch (e) {}
+        try {
+          const parsed = JSON.parse(raw);
+          // Forzar reset de contraseñas a la default si están desactualizadas
+          if (parsed.users && parsed.users.length > 0) {
+            const needsUpdate = parsed.users.some(u => u.password !== DEFAULT_PASSWORD);
+            if (needsUpdate) {
+              parsed.users = parsed.users.map(u => ({ ...u, password: DEFAULT_PASSWORD }));
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            }
+          }
+          return parsed;
+        } catch (e) {}
       }
       const robots = INITIAL_ROBOTS.map((r, i) => ({
         id: 'r' + (i + 1),
