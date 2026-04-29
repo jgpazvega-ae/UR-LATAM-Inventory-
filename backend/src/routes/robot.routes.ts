@@ -8,6 +8,10 @@ import {
   actualizarRobot,
   eliminarRobot,
   importarRobots,
+  reportarDano,
+  repararRobot,
+  obtenerHistorial,
+  generarReporte,
 } from '../controllers/robot.controller';
 import { authenticate, authorize } from '../middleware/auth';
 
@@ -19,6 +23,10 @@ router.get('/familias', listarFamilias);
 router.post('/familias', authorize('ADMIN', 'SERVICIO'), crearFamilia);
 
 router.get('/', listarRobots);
+router.get('/:id/historial', obtenerHistorial);
+router.get('/:id/reportes', generarReporte);
+router.post('/:id/reportar-dano', reportarDano);
+router.post('/:id/reparar', repararRobot);
 router.get('/:id', obtenerRobot);
 router.post('/', authorize('ADMIN', 'SERVICIO'), crearRobot);
 router.put('/:id', authorize('ADMIN', 'SERVICIO'), actualizarRobot);

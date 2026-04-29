@@ -2,6 +2,7 @@ import { Response } from 'express';
 import prisma from '../config/db';
 import { AuthRequest } from '../middleware/auth';
 import { sendEmail, templates } from '../services/email.service';
+import { historialRobotService } from '../services/historial.service';
 
 const formatFecha = (date: Date): string =>
   date.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -22,7 +23,7 @@ const generarNumeroSolicitud = async (): Promise<string> => {
 export const listarSolicitudes = async (req: AuthRequest, res: Response) => {
   try {
     const { estado, usuario } = req.query;
-    const where: any = {};
+    const where: any = { regionId: req.user!.regionId };
 
     if (estado) where.estado = estado;
     if (usuario === 'mias' && req.user) where.usuarioSolicitanteId = req.user.id;
@@ -136,6 +137,7 @@ export const crearSolicitud = async (req: AuthRequest, res: Response) => {
         motivo,
         estado: 'PENDIENTE_APROBACION',
         pdfVendedor: pdfFile ? pdfFile.path : null,
+        regionId: req.user!.regionId,
         detalles: {
           create: robotIds.map((robotId: string, index: number) => ({
             robotId,
@@ -337,12 +339,24 @@ export const confirmarSalida = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // Actualizar estado de robots a EN_PRESTAMO
+    // Actualizar estado de robots a EN_PRESTAMO y registrar en historial
     for (const detalle of solicitud.detalles) {
       await prisma.robot.update({
         where: { id: detalle.robotId },
         data: { estado: 'EN_PRESTAMO' },
       });
+
+      await historialRobotService.registrarEvento(
+        detalle.robotId,
+        req.user!.id,
+        'PRESTAMO_INICIADO',
+        `Robot prestado a ${solicitud.usuarioSolicitante.nombreCompleto}`,
+        'DISPONIBLE',
+        'EN_PRESTAMO',
+        solicitud.id,
+        solicitud.fechaInioSolicitada,
+        solicitud.fechaFinSolicitada
+      );
     }
 
     const robotsString = solicitud.detalles
@@ -385,12 +399,24 @@ export const confirmarRecepcion = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // Restaurar robots a DISPONIBLE
+    // Restaurar robots a DISPONIBLE y registrar en historial
     for (const detalle of solicitud.detalles) {
       await prisma.robot.update({
         where: { id: detalle.robotId },
         data: { estado: 'DISPONIBLE' },
       });
+
+      await historialRobotService.registrarEvento(
+        detalle.robotId,
+        req.user!.id,
+        'PRESTAMO_DEVUELTO',
+        `Robot devuelto por ${solicitud.usuarioSolicitante.nombreCompleto}`,
+        'EN_PRESTAMO',
+        'DISPONIBLE',
+        solicitud.id,
+        solicitud.fechaInioSolicitada,
+        solicitud.fechaRecepcionReal
+      );
     }
 
     const robotsString = solicitud.detalles
@@ -414,11 +440,12 @@ export const confirmarRecepcion = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const reporteDemosActivas = async (_req: AuthRequest, res: Response) => {
+export const reporteDemosActivas = async (req: AuthRequest, res: Response) => {
   try {
     const demosActivas = await prisma.prestamo.findMany({
       where: {
         estado: 'ACTIVO',
+        regionId: req.user!.regionId,
       },
       include: {
         usuarioSolicitante: {

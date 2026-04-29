@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import prisma from '../config/db';
 import { AuthRequest } from '../middleware/auth';
+import { historialRobotService } from '../services/historial.service';
 
 export const listarFamilias = async (_req: AuthRequest, res: Response) => {
   try {
@@ -26,7 +27,7 @@ export const crearFamilia = async (req: AuthRequest, res: Response) => {
 export const listarRobots = async (req: AuthRequest, res: Response) => {
   try {
     const { familiaId, estado, disponibles } = req.query;
-    const where: any = {};
+    const where: any = { regionId: req.user!.regionId };
 
     if (familiaId) where.familiaId = familiaId;
     if (estado) where.estado = estado;
@@ -47,8 +48,8 @@ export const listarRobots = async (req: AuthRequest, res: Response) => {
 export const obtenerRobot = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const robot = await prisma.robot.findUnique({
-      where: { id },
+    const robot = await prisma.robot.findFirst({
+      where: { id, regionId: req.user!.regionId },
       include: {
         familia: true,
         detallesPrestamo: {
@@ -72,7 +73,7 @@ export const obtenerRobot = async (req: AuthRequest, res: Response) => {
 export const crearRobot = async (req: AuthRequest, res: Response) => {
   try {
     const robot = await prisma.robot.create({
-      data: req.body,
+      data: { ...req.body, regionId: req.user!.regionId },
       include: { familia: true },
     });
     return res.status(201).json(robot);
@@ -89,6 +90,11 @@ export const actualizarRobot = async (req: AuthRequest, res: Response) => {
       data: req.body,
       include: { familia: true },
     });
+
+    if (robot.regionId !== req.user!.regionId) {
+      return res.status(403).json({ error: 'No tiene permiso para actualizar este robot' });
+    }
+
     return res.json(robot);
   } catch {
     return res.status(500).json({ error: 'Error al actualizar robot' });
@@ -98,6 +104,14 @@ export const actualizarRobot = async (req: AuthRequest, res: Response) => {
 export const eliminarRobot = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const robot = await prisma.robot.findFirst({
+      where: { id, regionId: req.user!.regionId },
+    });
+
+    if (!robot) {
+      return res.status(403).json({ error: 'No tiene permiso para eliminar este robot' });
+    }
+
     await prisma.robot.delete({ where: { id } });
     return res.json({ mensaje: 'Robot eliminado' });
   } catch {
@@ -117,7 +131,9 @@ export const importarRobots = async (req: AuthRequest, res: Response) => {
 
     for (const robotData of robots) {
       try {
-        await prisma.robot.create({ data: robotData });
+        await prisma.robot.create({
+          data: { ...robotData, regionId: req.user!.regionId },
+        });
         resultados.creados++;
       } catch (err: any) {
         resultados.errores++;
@@ -128,5 +144,107 @@ export const importarRobots = async (req: AuthRequest, res: Response) => {
     return res.json(resultados);
   } catch {
     return res.status(500).json({ error: 'Error al importar robots' });
+  }
+};
+
+export const reportarDano = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { descripcion, requisitos } = req.body;
+
+    const robot = await prisma.robot.findFirst({
+      where: { id, regionId: req.user!.regionId },
+    });
+
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot no encontrado' });
+    }
+
+    const evento = await historialRobotService.reportarDano(
+      id,
+      req.user!.id,
+      descripcion,
+      requisitos
+    );
+
+    if (!evento) {
+      return res.status(500).json({ error: 'Error al reportar daño' });
+    }
+
+    return res.json({ mensaje: 'Daño reportado correctamente', evento });
+  } catch {
+    return res.status(500).json({ error: 'Error al reportar daño' });
+  }
+};
+
+export const repararRobot = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const robot = await prisma.robot.findFirst({
+      where: { id, regionId: req.user!.regionId },
+    });
+
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot no encontrado' });
+    }
+
+    const evento = await historialRobotService.registrarReparacion(id, req.user!.id);
+
+    if (!evento) {
+      return res.status(500).json({ error: 'Error al registrar reparación' });
+    }
+
+    return res.json({ mensaje: 'Robot reparado correctamente', evento });
+  } catch {
+    return res.status(500).json({ error: 'Error al registrar reparación' });
+  }
+};
+
+export const obtenerHistorial = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { limite = '50' } = req.query;
+
+    const robot = await prisma.robot.findFirst({
+      where: { id, regionId: req.user!.regionId },
+    });
+
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot no encontrado' });
+    }
+
+    const historial = await historialRobotService.obtenerHistorial(
+      id,
+      parseInt(limite as string)
+    );
+
+    return res.json(historial);
+  } catch {
+    return res.status(500).json({ error: 'Error al obtener historial' });
+  }
+};
+
+export const generarReporte = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const robot = await prisma.robot.findFirst({
+      where: { id, regionId: req.user!.regionId },
+    });
+
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot no encontrado' });
+    }
+
+    const reporte = await historialRobotService.generarReporte(id);
+
+    if (!reporte) {
+      return res.status(500).json({ error: 'Error al generar reporte' });
+    }
+
+    return res.json(reporte);
+  } catch {
+    return res.status(500).json({ error: 'Error al generar reporte' });
   }
 };
