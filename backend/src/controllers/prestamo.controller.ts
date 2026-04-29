@@ -407,3 +407,41 @@ export const confirmarRecepcion = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: 'Error al confirmar recepción' });
   }
 };
+
+export const reporteDemosActivas = async (req: AuthRequest, res: Response) => {
+  try {
+    const demosActivas = await prisma.prestamo.findMany({
+      where: {
+        estado: 'ACTIVO',
+      },
+      include: {
+        usuarioSolicitante: {
+          select: { id: true, nombreCompleto: true, email: true },
+        },
+        distribuidor: true,
+        detalles: {
+          include: { robot: { include: { familia: true } } },
+        },
+      },
+      orderBy: { fechaFinSolicitada: 'asc' },
+    });
+
+    const reporteEnriquecido = demosActivas.map((demo) => {
+      const ahora = new Date();
+      const fechaFin = new Date(demo.fechaFinSolicitada);
+      const diasRestantes = Math.ceil((fechaFin.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24));
+      const vigente = diasRestantes > 0;
+
+      return {
+        ...demo,
+        diasRestantes,
+        vigente,
+      };
+    });
+
+    return res.json(reporteEnriquecido);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Error al obtener reporte de demos' });
+  }
+};

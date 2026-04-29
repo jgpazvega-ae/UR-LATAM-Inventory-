@@ -10,6 +10,8 @@ import NuevaSolicitudPage from './pages/NuevaSolicitudPage'
 import SolicitudDetallePage from './pages/SolicitudDetallePage'
 import RobotsPage from './pages/RobotsPage'
 import ConfiguracionPage from './pages/ConfiguracionPage'
+import ReporteDemosPage from './pages/ReporteDemosPage'
+import GestionContraseñasPage from './pages/GestionContraseñasPage'
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth()
@@ -34,6 +36,8 @@ function App() {
             <Route path="/solicitudes/:id" element={<SolicitudDetallePage />} />
             <Route path="/robots" element={<RobotsPage />} />
             <Route path="/configuracion" element={<ConfiguracionPage />} />
+            <Route path="/reportes/demos" element={<ReporteDemosPage />} />
+            <Route path="/gestion-contrasenas" element={<GestionContraseñasPage />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Route>
         </Routes>

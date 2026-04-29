@@ -26,15 +26,25 @@ export default function Sidebar() {
         <NavLink to="/robots" className={linkClass}>
           Robots
         </NavLink>
+        {(isGerente || isAdmin) && (
+          <NavLink to="/reportes/demos" className={linkClass}>
+            📊 Reporte Demos
+          </NavLink>
+        )}
         {isGerente && (
           <NavLink to="/usuarios" className={linkClass}>
             Usuarios
           </NavLink>
         )}
         {isAdmin && (
-          <NavLink to="/configuracion" className={linkClass}>
-            Configuración
-          </NavLink>
+          <>
+            <NavLink to="/gestion-contrasenas" className={linkClass}>
+              🔐 Contraseñas
+            </NavLink>
+            <NavLink to="/configuracion" className={linkClass}>
+              Configuración
+            </NavLink>
+          </>
         )}
       </nav>
 

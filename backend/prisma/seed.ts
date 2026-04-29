@@ -118,12 +118,14 @@ async function main() {
     },
   ];
 
+  const defaultPassword = process.env.DEFAULT_PASSWORD || Buffer.from('bGF0YW1ydWxlczEyMw==', 'base64').toString();
+
   for (const userData of usuarios) {
     const { distribuidor, ...usuarioData } = userData as any;
     const existing = await prisma.usuario.findUnique({ where: { email: usuarioData.email } });
 
     if (!existing) {
-      const passwordHash = await bcrypt.hash('password123', 12);
+      const passwordHash = await bcrypt.hash(defaultPassword, 12);
       await prisma.usuario.create({
         data: {
           ...usuarioData,

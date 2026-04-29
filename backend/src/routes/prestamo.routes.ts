@@ -7,6 +7,7 @@ import {
   rechazarSolicitud,
   confirmarSalida,
   confirmarRecepcion,
+  reporteDemosActivas,
 } from '../controllers/prestamo.controller';
 import { authenticate, authorize } from '../middleware/auth';
 
@@ -14,6 +15,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.get('/reportes/demos-activas', authorize('ADMIN', 'GERENTE_VENTAS'), reporteDemosActivas);
 router.get('/', listarSolicitudes);
 router.get('/:id', obtenerSolicitud);
 router.post('/', crearSolicitud);

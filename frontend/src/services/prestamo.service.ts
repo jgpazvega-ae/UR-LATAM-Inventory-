@@ -41,4 +41,9 @@ export const prestamoService = {
     const { data } = await api.post(`/prestamos/${id}/recepcion`);
     return data;
   },
+
+  reporteDemosActivas: async () => {
+    const { data } = await api.get('/prestamos/reportes/demos-activas');
+    return data;
+  },
 };
