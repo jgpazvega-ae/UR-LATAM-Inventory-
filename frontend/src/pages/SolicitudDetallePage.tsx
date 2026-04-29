@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { prestamoService } from '../services/prestamo.service'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -17,7 +17,6 @@ const formatFecha = (fecha?: string) =>
 
 export default function SolicitudDetallePage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const { isGerente, isServicio } = useAuth()
   const [solicitud, setSolicitud] = useState<any>(null)
   const [loading, setLoading] = useState(true)

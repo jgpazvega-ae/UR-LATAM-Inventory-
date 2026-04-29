@@ -3,10 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main
-      - master
       - InventoryURLATAMDEMOS
-      - claude/inventory-web-interface-UXcYg
       - claude/resume-inventory-project-IKuN9
   workflow_dispatch:
 
@@ -29,13 +26,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: cd frontend && npm install
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+        env:
+          VITE_API_URL: 'http://localhost:5000/api'
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: 'frontend/dist'
 
       - name: Deploy to GitHub Pages
         id: deployment
