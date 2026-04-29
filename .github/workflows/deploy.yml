@@ -5,7 +5,9 @@ on:
     branches:
       - main
       - master
+      - InventoryURLATAMDEMOS
       - claude/inventory-web-interface-UXcYg
+      - claude/resume-inventory-project-IKuN9
   workflow_dispatch:
 
 permissions:
