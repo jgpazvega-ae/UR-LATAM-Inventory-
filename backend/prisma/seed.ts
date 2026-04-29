@@ -4,7 +4,118 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Iniciando seed...');
+  console.log('🌱 Iniciando seed multi-región...');
+
+  // ==================== IDIOMAS ====================
+  console.log('📍 Creando idiomas...');
+  const idiomas = [
+    { codigo: 'ES', nombre: 'Español', codigoIso: 'es' },
+    { codigo: 'PT', nombre: 'Português', codigoIso: 'pt' },
+    { codigo: 'EN', nombre: 'English', codigoIso: 'en' },
+  ];
+
+  const idiomasCreados: any = {};
+  for (const idioma of idiomas) {
+    const existe = await prisma.idioma.findUnique({ where: { codigo: idioma.codigo } });
+    if (!existe) {
+      const created = await prisma.idioma.create({ data: idioma });
+      idiomasCreados[idioma.codigo] = created.id;
+    } else {
+      idiomasCreados[idioma.codigo] = existe.id;
+    }
+  }
+  console.log('✓ Idiomas creados/verificados');
+
+  // ==================== REGIONES ====================
+  console.log('📍 Creando regiones...');
+  const regionesData = [
+    {
+      codigo: 'MX',
+      nombre: 'México',
+      idiomaPrincipalId: idiomasCreados['ES'],
+      codigoIso: 'es-MX',
+      zonaHoraria: 'America/Mexico_City',
+      formatoFecha: 'DD/MM/YYYY',
+      formatoMoneda: 'MXN',
+    },
+    {
+      codigo: 'BR',
+      nombre: 'Brasil',
+      idiomaPrincipalId: idiomasCreados['PT'],
+      codigoIso: 'pt-BR',
+      zonaHoraria: 'America/Sao_Paulo',
+      formatoFecha: 'DD/MM/YYYY',
+      formatoMoneda: 'BRL',
+    },
+    {
+      codigo: 'USA',
+      nombre: 'Estados Unidos',
+      idiomaPrincipalId: idiomasCreados['EN'],
+      codigoIso: 'en-US',
+      zonaHoraria: 'America/Chicago',
+      formatoFecha: 'MM/DD/YYYY',
+      formatoMoneda: 'USD',
+    },
+  ];
+
+  const regiones: any = {};
+  for (const regionData of regionesData) {
+    const existe = await prisma.region.findUnique({ where: { codigo: regionData.codigo } });
+    if (!existe) {
+      const created = await prisma.region.create({ data: regionData });
+      regiones[regionData.codigo] = created.id;
+    } else {
+      regiones[regionData.codigo] = existe.id;
+    }
+  }
+  console.log('✓ Regiones creadas/verificadas');
+
+  // ==================== CONFIGURACIÓN REGIONAL ====================
+  console.log('📍 Creando configuración regional...');
+  const configRegional = [
+    {
+      regionId: regiones['MX'],
+      idiomaId: idiomasCreados['ES'],
+      diasMinimosAnticipacion: 7,
+      diasVencimientoAlerta: 7,
+      correoAdminPrincipal: 'admin@teradyne-robotics.com',
+      horariosNotificacion: JSON.stringify(['08:00', '12:00', '16:00']),
+      zonaHoraria: 'America/Mexico_City',
+      formatoFecha: 'DD/MM/YYYY',
+    },
+    {
+      regionId: regiones['BR'],
+      idiomaId: idiomasCreados['PT'],
+      diasMinimosAnticipacion: 7,
+      diasVencimientoAlerta: 7,
+      correoAdminPrincipal: 'admin-br@teradyne-robotics.com',
+      horariosNotificacion: JSON.stringify(['08:00', '12:00', '16:00']),
+      zonaHoraria: 'America/Sao_Paulo',
+      formatoFecha: 'DD/MM/YYYY',
+    },
+    {
+      regionId: regiones['USA'],
+      idiomaId: idiomasCreados['EN'],
+      diasMinimosAnticipacion: 7,
+      diasVencimientoAlerta: 7,
+      correoAdminPrincipal: 'admin-usa@teradyne-robotics.com',
+      horariosNotificacion: JSON.stringify(['08:00', '12:00', '16:00']),
+      zonaHoraria: 'America/Chicago',
+      formatoFecha: 'MM/DD/YYYY',
+    },
+  ];
+
+  for (const config of configRegional) {
+    const existe = await prisma.configuracionRegional.findUnique({
+      where: { regionId_idiomaId: { regionId: config.regionId, idiomaId: config.idiomaId } },
+    });
+    if (!existe) {
+      await prisma.configuracionRegional.create({ data: config });
+    }
+  }
+  console.log('✓ Configuración regional creada');
+
+  // ==================== FAMILIAS DE ROBOTS ====================
 
   // Familias de robots
   const familias = [
@@ -23,16 +134,19 @@ async function main() {
   }
   console.log('✓ Familias de robots creadas');
 
-  // Distribuidores
+  // ==================== DISTRIBUIDORES ====================
+  console.log('📍 Creando distribuidores...');
   const distribuidoresData = [
-    { nombre: 'Universal Robots Latam', contactoPrincipal: 'Equipo Ventas', correo: 'ventas@ur-latam.com' },
-    { nombre: 'MiR Distribution', contactoPrincipal: 'Equipo MiR', correo: 'contacto@mir-distribution.com' },
-    { nombre: 'Teradyne Robotics Centro', contactoPrincipal: 'Centro de Operaciones', correo: 'centro@teradyne-robotics.com' },
+    { nombre: 'Universal Robots Latam', contactoPrincipal: 'Equipo Ventas', correo: 'ventas@ur-latam.com', regionId: regiones['MX'] },
+    { nombre: 'MiR Distribution', contactoPrincipal: 'Equipo MiR', correo: 'contacto@mir-distribution.com', regionId: regiones['MX'] },
+    { nombre: 'Teradyne Robotics Centro', contactoPrincipal: 'Centro de Operaciones', correo: 'centro@teradyne-robotics.com', regionId: regiones['MX'] },
   ];
 
   const distribuidores: any = {};
   for (const dist of distribuidoresData) {
-    const existing = await prisma.distribuidor.findUnique({ where: { nombre: dist.nombre } });
+    const existing = await prisma.distribuidor.findFirst({
+      where: { nombre: dist.nombre, regionId: dist.regionId },
+    });
     if (existing) {
       distribuidores[dist.nombre] = existing.id;
     } else {
@@ -42,7 +156,8 @@ async function main() {
   }
   console.log('✓ Distribuidores creados');
 
-  // Usuarios iniciales
+  // ==================== USUARIOS ====================
+  console.log('📍 Creando usuarios...');
   const usuarios = [
     // Admin
     {
@@ -51,6 +166,8 @@ async function main() {
       nombreCompleto: 'Administrador Sistema',
       rol: 'ADMIN',
       activo: true,
+      regionId: regiones['MX'],
+      idiomaPreferidoId: idiomasCreados['ES'],
     },
     // Gerente de Ventas
     {
@@ -59,6 +176,8 @@ async function main() {
       nombreCompleto: 'Uriel Fraire',
       rol: 'GERENTE_VENTAS',
       activo: true,
+      regionId: regiones['MX'],
+      idiomaPreferidoId: idiomasCreados['ES'],
     },
     // Vendedores
     {
@@ -68,6 +187,8 @@ async function main() {
       rol: 'VENDEDOR',
       activo: true,
       distribuidor: 'Universal Robots Latam',
+      regionId: regiones['MX'],
+      idiomaPreferidoId: idiomasCreados['ES'],
     },
     {
       username: 'emmanuel.ponce',
@@ -76,6 +197,8 @@ async function main() {
       rol: 'VENDEDOR',
       activo: true,
       distribuidor: 'Universal Robots Latam',
+      regionId: regiones['MX'],
+      idiomaPreferidoId: idiomasCreados['ES'],
     },
     {
       username: 'miguel.lopez',
@@ -84,6 +207,8 @@ async function main() {
       rol: 'VENDEDOR',
       activo: true,
       distribuidor: 'MiR Distribution',
+      regionId: regiones['MX'],
+      idiomaPreferidoId: idiomasCreados['ES'],
     },
     {
       username: 'jesus.coronado',
@@ -92,6 +217,8 @@ async function main() {
       rol: 'VENDEDOR',
       activo: true,
       distribuidor: 'Universal Robots Latam',
+      regionId: regiones['MX'],
+      idiomaPreferidoId: idiomasCreados['ES'],
     },
     {
       username: 'maria.salcido',
@@ -100,6 +227,8 @@ async function main() {
       rol: 'VENDEDOR',
       activo: true,
       distribuidor: 'Teradyne Robotics Centro',
+      regionId: regiones['MX'],
+      idiomaPreferidoId: idiomasCreados['ES'],
     },
     // Equipo Técnico
     {
@@ -108,6 +237,8 @@ async function main() {
       nombreCompleto: 'Giovanny Paz',
       rol: 'SERVICIO',
       activo: true,
+      regionId: regiones['MX'],
+      idiomaPreferidoId: idiomasCreados['ES'],
     },
     {
       username: 'vinicius.bueno',
@@ -115,6 +246,8 @@ async function main() {
       nombreCompleto: 'Vinicius Bueno Santos',
       rol: 'SERVICIO',
       activo: true,
+      regionId: regiones['MX'],
+      idiomaPreferidoId: idiomasCreados['ES'],
     },
   ];
 
@@ -206,6 +339,8 @@ async function main() {
     }
   };
 
+  // ==================== ROBOTS ====================
+  console.log('📍 Cargando robots...');
   for (const robotData of robotsData) {
     const familia = await prisma.familiaRobot.findUnique({
       where: { nombreFamilia: robotData.familia },
@@ -227,27 +362,32 @@ async function main() {
           familiaId: familia.id,
           modelo: robotData.modelo,
           estado: mapEstado(robotData.estado),
+          regionId: regiones['MX'],  // Todos los robots iniciales en MX
         },
       });
     }
   }
   console.log(`✓ ${robotsData.length} robots cargados`);
 
-  // Configuración inicial
+  // ==================== CONFIGURACIÓN GLOBAL ====================
+  console.log('📍 Verificando configuración global...');
   const config = await prisma.configuracion.findFirst();
   if (!config) {
     await prisma.configuracion.create({
       data: {
         diasMinimosAnticipacion: 7,
         diasVencimientoAlerta: 7,
-        correoAdminPrincipal: adminEmail,
+        correoAdminPrincipal: 'admin@teradyne-robotics.com',
         horariosNotificacion: '["08:00", "12:00", "16:00"]',
       },
     });
-    console.log('✓ Configuración inicial creada');
+    console.log('✓ Configuración global creada');
   }
 
-  console.log('✅ Seed completado');
+  console.log('');
+  console.log('✅ Seed multi-región completado exitosamente');
+  console.log('📍 Regiones disponibles: MX, BR, USA');
+  console.log('🌐 Idiomas: ES, PT, EN');
 }
 
 main()

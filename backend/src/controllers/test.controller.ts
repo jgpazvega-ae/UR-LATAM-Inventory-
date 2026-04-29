@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { sendEmail, templates } from '../services/email.service';
+import prisma from '../config/db';
 
 export const testEmail = async (req: AuthRequest, res: Response) => {
   try {
@@ -28,8 +29,8 @@ export const testEmail = async (req: AuthRequest, res: Response) => {
       });
     } else {
       return res.status(500).json({
-        error: 'Error al enviar email - Verifica la configuración en .env',
-        detalles: 'Asegúrate de que EMAIL_USER, EMAIL_PASS y EMAIL_HOST estén configurados correctamente',
+        error: 'Error al enviar email - Verifica la configuración SMTP',
+        detalles: 'Asegúrate de que la configuración SMTP esté completada en ⚙️ Configuración',
       });
     }
   } catch (error) {
@@ -41,15 +42,25 @@ export const testEmail = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const healthCheck = async (_req: AuthRequest, res: Response) => {
+export const healthCheck = async (_req: any, res: Response) => {
   try {
+    let dbSmtpConfigured = false;
+    try {
+      const config = await prisma.configuracion.findFirst();
+      dbSmtpConfigured = !!config && !!config.smtpHost && !!config.smtpUser && !!config.smtpPassword;
+    } catch {
+      // Database not available
+    }
+
     return res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
       emailConfig: {
         host: process.env.EMAIL_HOST || 'NO CONFIGURADO',
         user: process.env.EMAIL_USER ? '***' : 'NO CONFIGURADO',
-        configured: !!process.env.EMAIL_USER && !!process.env.EMAIL_PASS,
+        envConfigured: !!process.env.EMAIL_USER && !!process.env.EMAIL_PASS,
+        dbConfigured: dbSmtpConfigured,
+        effectivelyConfigured: dbSmtpConfigured || (!!process.env.EMAIL_USER && !!process.env.EMAIL_PASS),
       },
     });
   } catch (error) {

@@ -2,6 +2,7 @@ import { Response } from 'express';
 import prisma from '../config/db';
 import { AuthRequest } from '../middleware/auth';
 import { sendEmail, templates } from '../services/email.service';
+import { historialRobotService } from '../services/historial.service';
 
 const formatFecha = (date: Date): string =>
   date.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -22,7 +23,7 @@ const generarNumeroSolicitud = async (): Promise<string> => {
 export const listarSolicitudes = async (req: AuthRequest, res: Response) => {
   try {
     const { estado, usuario } = req.query;
-    const where: any = {};
+    const where: any = { regionId: req.user!.regionId };
 
     if (estado) where.estado = estado;
     if (usuario === 'mias' && req.user) where.usuarioSolicitanteId = req.user.id;
@@ -79,6 +80,7 @@ export const obtenerSolicitud = async (req: AuthRequest, res: Response) => {
 export const crearSolicitud = async (req: AuthRequest, res: Response) => {
   try {
     const { robotIds, distribuidorId, fechaInicio, fechaFin, motivo } = req.body;
+    const pdfFile = (req as any).file;
 
     if (!robotIds || robotIds.length === 0) {
       return res.status(400).json({ error: 'Debe seleccionar al menos un robot' });
@@ -134,6 +136,8 @@ export const crearSolicitud = async (req: AuthRequest, res: Response) => {
         fechaFinSolicitada: fechaFinDate,
         motivo,
         estado: 'PENDIENTE_APROBACION',
+        pdfVendedor: pdfFile ? pdfFile.path : null,
+        regionId: req.user!.regionId,
         detalles: {
           create: robotIds.map((robotId: string, index: number) => ({
             robotId,
@@ -152,6 +156,8 @@ export const crearSolicitud = async (req: AuthRequest, res: Response) => {
       .join(', ');
 
     // Email al solicitante
+    const attachments = pdfFile ? [{ filename: pdfFile.originalname, path: pdfFile.path }] : [];
+
     await sendEmail({
       to: solicitud.usuarioSolicitante.email,
       cc: config?.correoAdminPrincipal,
@@ -164,6 +170,7 @@ export const crearSolicitud = async (req: AuthRequest, res: Response) => {
         fechaFin: formatFecha(fechaFinDate),
         motivo,
       }),
+      attachments,
     });
 
     // Email a gerente de ventas para aprobación
@@ -183,6 +190,7 @@ export const crearSolicitud = async (req: AuthRequest, res: Response) => {
           fechaFin: formatFecha(fechaFinDate),
           motivo,
         }),
+        attachments,
       });
     }
 
@@ -331,12 +339,24 @@ export const confirmarSalida = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // Actualizar estado de robots a EN_PRESTAMO
+    // Actualizar estado de robots a EN_PRESTAMO y registrar en historial
     for (const detalle of solicitud.detalles) {
       await prisma.robot.update({
         where: { id: detalle.robotId },
         data: { estado: 'EN_PRESTAMO' },
       });
+
+      await historialRobotService.registrarEvento(
+        detalle.robotId,
+        req.user!.id,
+        'PRESTAMO_INICIADO',
+        `Robot prestado a ${solicitud.usuarioSolicitante.nombreCompleto}`,
+        'DISPONIBLE',
+        'EN_PRESTAMO',
+        solicitud.id,
+        solicitud.fechaInioSolicitada,
+        solicitud.fechaFinSolicitada
+      );
     }
 
     const robotsString = solicitud.detalles
@@ -379,12 +399,24 @@ export const confirmarRecepcion = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // Restaurar robots a DISPONIBLE
+    // Restaurar robots a DISPONIBLE y registrar en historial
     for (const detalle of solicitud.detalles) {
       await prisma.robot.update({
         where: { id: detalle.robotId },
         data: { estado: 'DISPONIBLE' },
       });
+
+      await historialRobotService.registrarEvento(
+        detalle.robotId,
+        req.user!.id,
+        'PRESTAMO_DEVUELTO',
+        `Robot devuelto por ${solicitud.usuarioSolicitante.nombreCompleto}`,
+        'EN_PRESTAMO',
+        'DISPONIBLE',
+        solicitud.id,
+        solicitud.fechaInioSolicitada,
+        solicitud.fechaRecepcionReal
+      );
     }
 
     const robotsString = solicitud.detalles
@@ -413,6 +445,7 @@ export const reporteDemosActivas = async (req: AuthRequest, res: Response) => {
     const demosActivas = await prisma.prestamo.findMany({
       where: {
         estado: 'ACTIVO',
+        regionId: req.user!.regionId,
       },
       include: {
         usuarioSolicitante: {
@@ -443,5 +476,114 @@ export const reporteDemosActivas = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Error al obtener reporte de demos' });
+  }
+};
+
+export const responderSolicitud = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const pdfFile = (req as any).file;
+
+    const solicitud = await prisma.prestamo.findUnique({
+      where: { id },
+      include: {
+        usuarioSolicitante: true,
+        detalles: { include: { robot: true } },
+      },
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    const updated = await prisma.prestamo.update({
+      where: { id },
+      data: {
+        pdfUriel: pdfFile ? pdfFile.path : solicitud.pdfUriel,
+      },
+      include: {
+        usuarioSolicitante: true,
+        detalles: { include: { robot: true } },
+      },
+    });
+
+    const robotsString = updated.detalles
+      .map((d) => `${d.robot.numeroSerie} (${d.robot.modelo || ''})`)
+      .join(', ');
+
+    const attachments = [];
+    if (solicitud.pdfVendedor) {
+      attachments.push({ filename: 'solicitud-vendedor.pdf', path: solicitud.pdfVendedor });
+    }
+    if (pdfFile) {
+      attachments.push({ filename: pdfFile.originalname, path: pdfFile.path });
+    }
+
+    const personalServicio = await prisma.usuario.findFirst({
+      where: { rol: 'SERVICIO', activo: true },
+    });
+
+    if (personalServicio) {
+      await sendEmail({
+        to: personalServicio.email,
+        subject: `📋 Respuesta de Admin - Solicitud ${solicitud.numeroSolicitud}`,
+        html: templates.respuestaAdmin({
+          numeroSolicitud: solicitud.numeroSolicitud,
+          solicitante: solicitud.usuarioSolicitante.nombreCompleto,
+          robots: robotsString,
+          fechaInicio: formatFecha(solicitud.fechaInioSolicitada),
+          fechaFin: formatFecha(solicitud.fechaFinSolicitada),
+        }),
+        attachments,
+      });
+    }
+
+    return res.json(updated);
+  } catch (error) {
+    console.error('Error respondiendo solicitud:', error);
+    return res.status(500).json({ error: 'Error al responder solicitud' });
+  }
+};
+
+export const subirPDFConfirmacion = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const pdfFile = (req as any).file;
+
+    if (!pdfFile) {
+      return res.status(400).json({ error: 'Se requiere un archivo PDF' });
+    }
+
+    const solicitud = await prisma.prestamo.update({
+      where: { id },
+      data: {
+        pdfServicio: pdfFile.path,
+      },
+      include: {
+        usuarioSolicitante: true,
+        detalles: { include: { robot: true } },
+      },
+    });
+
+    const robotsString = solicitud.detalles
+      .map((d) => `${d.robot.numeroSerie} (${d.robot.modelo || ''})`)
+      .join(', ');
+
+    await sendEmail({
+      to: solicitud.usuarioSolicitante.email,
+      subject: `📦 Confirmación de Entrega - ${solicitud.numeroSolicitud}`,
+      html: templates.confirmacionEntrega({
+        numeroSolicitud: solicitud.numeroSolicitud,
+        nombre: solicitud.usuarioSolicitante.nombreCompleto,
+        robots: robotsString,
+        fechaEntrega: formatFecha(new Date()),
+      }),
+      attachments: [{ filename: pdfFile.originalname, path: pdfFile.path }],
+    });
+
+    return res.json(solicitud);
+  } catch (error) {
+    console.error('Error subiendo PDF confirmación:', error);
+    return res.status(500).json({ error: 'Error al subir confirmación' });
   }
 };

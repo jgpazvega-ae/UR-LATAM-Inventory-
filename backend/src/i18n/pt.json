@@ -1,0 +1,102 @@
+{
+  "app": {
+    "nombre": "Teradyne Robotics",
+    "subtitulo": "Controle de Inventário",
+    "descripcion": "Sistema de gestão de empréstimos de robôs"
+  },
+  "navegacion": {
+    "dashboard": "Painel",
+    "robots": "Robôs",
+    "solicitudes": "Solicitações",
+    "historial": "Histórico",
+    "usuarios": "Usuários",
+    "configuracion": "Configuração",
+    "perfil": "Perfil",
+    "salir": "Sair"
+  },
+  "login": {
+    "titulo": "Teradyne Robotics",
+    "subtitulo": "Controle de Inventário",
+    "email": "Email ou Usuário",
+    "emailPlaceholder": "seu-email@example.com",
+    "password": "Senha",
+    "passwordPlaceholder": "Sua senha",
+    "region": "Região",
+    "idioma": "Idioma",
+    "ingresar": "Entrar",
+    "ingresando": "Entrando...",
+    "noTieneCuenta": "Não tem conta?",
+    "contactarAdmin": "Entre em contato com o administrador"
+  },
+  "solicitudes": {
+    "titulo": "Solicitações de Empréstimo",
+    "nueva": "Nova Solicitação",
+    "crear": "Criar Solicitação",
+    "robot": "Robô",
+    "fechaInicio": "Data de Início",
+    "fechaFin": "Data de Término",
+    "motivo": "Motivo",
+    "pdf": "Anexar PDF",
+    "enviar": "Enviar Solicitação",
+    "estado": "Status",
+    "aprobador": "Aprovador",
+    "aprobar": "Aprovar",
+    "rechazar": "Rejeitar",
+    "recolectar": "Marcar como Coletado",
+    "devolver": "Retornar a Disponível"
+  },
+  "robots": {
+    "titulo": "Robôs",
+    "serie": "Número de Série",
+    "modelo": "Modelo",
+    "familia": "Família",
+    "estado": "Status",
+    "ubicacion": "Localização",
+    "disponible": "Disponível",
+    "enPrestamo": "Em Empréstimo",
+    "mantenimiento": "Manutenção",
+    "danado": "Danificado",
+    "retirado": "Aposentado"
+  },
+  "historial": {
+    "titulo": "Histórico de Demonstrações",
+    "fechas": "Datas",
+    "quien": "Quem solicitou",
+    "duracion": "Duração",
+    "descargarPdf": "Baixar PDF"
+  },
+  "notificaciones": {
+    "titulo": "Notificações",
+    "nueva": "Nova notificação",
+    "solicitudAprobada": "Solicitação Aprovada",
+    "solicitudRechazada": "Solicitação Rejeitada",
+    "robotRecolectado": "Robô Coletado",
+    "robotDevuelto": "Robô Retornado",
+    "robotDanado": "Robô Reportado como Danificado"
+  },
+  "errors": {
+    "credencialesInvalidas": "Credenciais inválidas",
+    "usuarioNoActivo": "Conta não ativada. Entre em contato com o administrador.",
+    "todosLosCamposRequeridos": "Todos os campos são obrigatórios",
+    "emailYaRegistrado": "Email ou usuário já registrado",
+    "robotNoDisponible": "Robô não está disponível",
+    "fechasInvalidas": "A data de início deve ser pelo menos 7 dias a partir de hoje",
+    "fechaFinal": "A data final deve ser posterior à data de início",
+    "backendNoDisponible": "O backend não está disponível",
+    "errorEnviarEmail": "Erro ao enviar email"
+  },
+  "success": {
+    "solicitudEnviada": "Solicitação enviada com sucesso",
+    "solicitudAprobada": "Solicitação aprovada",
+    "solicitudRechazada": "Solicitação rejeitada",
+    "emailEnviado": "Email enviado com sucesso",
+    "configuracionGuardada": "Configuração salva"
+  },
+  "emails": {
+    "solicitudCreada": "Sua solicitação de demonstração foi criada",
+    "solicitudAprobada": "Sua solicitação de demonstração foi aprovada",
+    "solicitudRechazada": "Sua solicitação de demonstração foi rejeitada",
+    "robotRecolectado": "Seu robô foi coletado",
+    "robotDevuelto": "Seu robô foi retornado"
+  }
+}

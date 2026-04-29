@@ -1,0 +1,37 @@
+
+> ur-latam-inventory-backend@0.1.0 dev
+> ts-node-dev --respawn src/index.ts
+
+[INFO] 17:45:35 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+✅ Servidor corriendo en http://localhost:5000
+prisma:error 
+Invalid `prisma.configuracion.findFirst()` invocation in
+/home/user/UR-LATAM-Inventory-/backend/src/services/notification.service.ts:115:45
+
+  112  * Inicia los cron jobs según horarios configurados
+  113  */
+  114 export const iniciarCronJobs = async () => {
+→ 115   const config = await prisma.configuracion.findFirst(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+⚠️ Error iniciando cron jobs: PrismaClientInitializationError: 
+Invalid `prisma.configuracion.findFirst()` invocation in
+/home/user/UR-LATAM-Inventory-/backend/src/services/notification.service.ts:115:45
+
+  112  * Inicia los cron jobs según horarios configurados
+  113  */
+  114 export const iniciarCronJobs = async () => {
+→ 115   const config = await prisma.configuracion.findFirst(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at $n.handleRequestError (/home/user/UR-LATAM-Inventory-/backend/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/home/user/UR-LATAM-Inventory-/backend/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/home/user/UR-LATAM-Inventory-/backend/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at l (/home/user/UR-LATAM-Inventory-/backend/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at iniciarCronJobs (/home/user/UR-LATAM-Inventory-/backend/src/services/notification.service.ts:115:18)
+    at Server.<anonymous> (/home/user/UR-LATAM-Inventory-/backend/src/index.ts:44:7) {
+  clientVersion: '5.22.0',
+  errorCode: undefined
+}

@@ -4,12 +4,16 @@ import jwt from 'jsonwebtoken';
 import prisma from '../config/db';
 import { sendEmail, templates } from '../services/email.service';
 
-const generarToken = (userId: string): string =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+const generarToken = (userId: string, regionCode?: string, idioma?: string): string =>
+  jwt.sign(
+    { id: userId, region: regionCode || 'MX', idioma: idioma || 'ES' },
+    process.env.JWT_SECRET || 'secret',
+    { expiresIn: '7d' }
+  );
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { username, email, password, nombreCompleto } = req.body;
+    const { username, email, password, nombreCompleto, regionCode = 'MX', idioma = 'ES' } = req.body;
 
     if (!username || !email || !password || !nombreCompleto) {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
@@ -23,6 +27,19 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Email o usuario ya registrado' });
     }
 
+    // Obtener región e idioma por defecto si no se especifican
+    const region = await prisma.region.findFirst({
+      where: { codigo: regionCode },
+    });
+
+    const idiomaObj = await prisma.idioma.findFirst({
+      where: { codigo: idioma },
+    });
+
+    if (!region || !idiomaObj) {
+      return res.status(400).json({ error: 'Región o idioma inválido' });
+    }
+
     const passwordHash = await bcrypt.hash(password || 'default', 12);
 
     const nuevoUsuario = await prisma.usuario.create({
@@ -33,6 +50,8 @@ export const register = async (req: Request, res: Response) => {
         nombreCompleto,
         rol: 'VENDEDOR',
         activo: false,
+        regionId: region.id,
+        idiomaPreferidoId: idiomaObj.id,
       },
     });
 
@@ -58,6 +77,7 @@ export const login = async (req: Request, res: Response) => {
 
     const usuario = await prisma.usuario.findFirst({
       where: { OR: [{ email }, { username: email }] },
+      include: { region: true, idiomaPreferido: true },
     });
 
     if (!usuario) {
@@ -81,7 +101,7 @@ export const login = async (req: Request, res: Response) => {
       data: { fechaUltimoLogin: new Date() },
     });
 
-    const token = generarToken(usuario.id);
+    const token = generarToken(usuario.id, usuario.region.codigo, usuario.idiomaPreferido.codigo);
 
     return res.json({
       token,
@@ -91,6 +111,8 @@ export const login = async (req: Request, res: Response) => {
         email: usuario.email,
         nombreCompleto: usuario.nombreCompleto,
         rol: usuario.rol,
+        region: usuario.region.codigo,
+        idioma: usuario.idiomaPreferido.codigo,
       },
     });
   } catch (error) {

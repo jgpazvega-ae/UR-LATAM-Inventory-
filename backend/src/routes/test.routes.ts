@@ -4,10 +4,10 @@ import { authenticate, authorize } from '../middleware/auth';
 
 const router = Router();
 
-router.use(authenticate);
-
-// Health check endpoint (public)
+// Health check endpoint (public, no auth required)
 router.get('/health', healthCheck);
+
+router.use(authenticate);
 
 // Email test endpoint (admin only)
 router.post('/email', authorize('ADMIN'), testEmail);

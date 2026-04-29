@@ -1,0 +1,102 @@
+{
+  "app": {
+    "nombre": "Teradyne Robotics",
+    "subtitulo": "Inventory Management",
+    "descripcion": "Robot Loan Management System"
+  },
+  "navegacion": {
+    "dashboard": "Dashboard",
+    "robots": "Robots",
+    "solicitudes": "Requests",
+    "historial": "History",
+    "usuarios": "Users",
+    "configuracion": "Settings",
+    "perfil": "Profile",
+    "salir": "Logout"
+  },
+  "login": {
+    "titulo": "Teradyne Robotics",
+    "subtitulo": "Inventory Management",
+    "email": "Email or Username",
+    "emailPlaceholder": "your-email@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Your password",
+    "region": "Region",
+    "idioma": "Language",
+    "ingresar": "Sign In",
+    "ingresando": "Signing In...",
+    "noTieneCuenta": "Don't have an account?",
+    "contactarAdmin": "Contact your administrator"
+  },
+  "solicitudes": {
+    "titulo": "Loan Requests",
+    "nueva": "New Request",
+    "crear": "Create Request",
+    "robot": "Robot",
+    "fechaInicio": "Start Date",
+    "fechaFin": "End Date",
+    "motivo": "Purpose",
+    "pdf": "Attach PDF",
+    "enviar": "Submit Request",
+    "estado": "Status",
+    "aprobador": "Approver",
+    "aprobar": "Approve",
+    "rechazar": "Reject",
+    "recolectar": "Mark as Collected",
+    "devolver": "Return to Available"
+  },
+  "robots": {
+    "titulo": "Robots",
+    "serie": "Serial Number",
+    "modelo": "Model",
+    "familia": "Family",
+    "estado": "Status",
+    "ubicacion": "Location",
+    "disponible": "Available",
+    "enPrestamo": "On Loan",
+    "mantenimiento": "Maintenance",
+    "danado": "Damaged",
+    "retirado": "Retired"
+  },
+  "historial": {
+    "titulo": "Demo History",
+    "fechas": "Dates",
+    "quien": "Requested By",
+    "duracion": "Duration",
+    "descargarPdf": "Download PDF"
+  },
+  "notificaciones": {
+    "titulo": "Notifications",
+    "nueva": "New notification",
+    "solicitudAprobada": "Request Approved",
+    "solicitudRechazada": "Request Rejected",
+    "robotRecolectado": "Robot Collected",
+    "robotDevuelto": "Robot Returned",
+    "robotDanado": "Robot Reported as Damaged"
+  },
+  "errors": {
+    "credencialesInvalidas": "Invalid credentials",
+    "usuarioNoActivo": "Account not activated. Contact your administrator.",
+    "todosLosCamposRequeridos": "All fields are required",
+    "emailYaRegistrado": "Email or username already registered",
+    "robotNoDisponible": "Robot is not available",
+    "fechasInvalidas": "Start date must be at least 7 days from today",
+    "fechaFinal": "End date must be after start date",
+    "backendNoDisponible": "Backend is not available",
+    "errorEnviarEmail": "Error sending email"
+  },
+  "success": {
+    "solicitudEnviada": "Request submitted successfully",
+    "solicitudAprobada": "Request approved",
+    "solicitudRechazada": "Request rejected",
+    "emailEnviado": "Email sent successfully",
+    "configuracionGuardada": "Settings saved"
+  },
+  "emails": {
+    "solicitudCreada": "Your demo request has been created",
+    "solicitudAprobada": "Your demo request has been approved",
+    "solicitudRechazada": "Your demo request has been rejected",
+    "robotRecolectado": "Your robot has been collected",
+    "robotDevuelto": "Your robot has been returned"
+  }
+}

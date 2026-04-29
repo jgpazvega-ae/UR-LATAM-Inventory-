@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
+import prisma from '../config/db';
 
-const transporter = nodemailer.createTransport({
+let transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.EMAIL_PORT || '587'),
   secure: false,
@@ -10,21 +11,54 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const getTransporter = async () => {
+  try {
+    const config = await prisma.configuracion.findFirst();
+    if (config && config.smtpHost && config.smtpUser && config.smtpPassword) {
+      return nodemailer.createTransport({
+        host: config.smtpHost,
+        port: config.smtpPort || 587,
+        secure: false,
+        auth: {
+          user: config.smtpUser,
+          pass: config.smtpPassword,
+        },
+      });
+    }
+  } catch {
+    // Fall back to env variables if database query fails
+  }
+  return transporter;
+};
+
+interface EmailAttachment {
+  filename: string;
+  path?: string;
+  content?: Buffer | string;
+  contentType?: string;
+}
+
 interface EmailOptions {
   to: string | string[];
   cc?: string | string[];
   subject: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
 export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'noreply@teradyne-robotics.com',
+    const mailer = await getTransporter();
+    const config = await prisma.configuracion.findFirst().catch(() => null);
+    const fromEmail = config?.smtpFromEmail || process.env.EMAIL_FROM || 'noreply@teradyne-robotics.com';
+
+    await mailer.sendMail({
+      from: fromEmail,
       to: Array.isArray(options.to) ? options.to.join(',') : options.to,
       cc: options.cc ? (Array.isArray(options.cc) ? options.cc.join(',') : options.cc) : undefined,
       subject: options.subject,
       html: options.html,
+      attachments: options.attachments,
     });
     return true;
   } catch (error) {
@@ -230,6 +264,35 @@ export const templates = {
       <p>${data.estado === 'APROBADO'
         ? 'El personal de servicio coordinará los detalles de entrega.'
         : 'Se ha notificado al solicitante sobre el rechazo.'}</p>
+    `),
+
+  respuestaAdmin: (data: { numeroSolicitud: string; solicitante: string; robots: string; fechaInicio: string; fechaFin: string }) =>
+    baseTemplate('📋 Respuesta del Administrador', `
+      <p>Hola,</p>
+      <div class="info-box">
+        <p><strong>Se ha recibido una respuesta del administrador para la solicitud ${data.numeroSolicitud}.</strong></p>
+      </div>
+      <table>
+        <tr><td>Número de Solicitud:</td><td><strong>${data.numeroSolicitud}</strong></td></tr>
+        <tr><td>Solicitante:</td><td>${data.solicitante}</td></tr>
+        <tr><td>Robots:</td><td>${data.robots}</td></tr>
+        <tr><td>Período:</td><td>${data.fechaInicio} - ${data.fechaFin}</td></tr>
+      </table>
+      <p>Verifica los documentos adjuntos para los detalles de preparación y entrega.</p>
+    `),
+
+  confirmacionEntrega: (data: { numeroSolicitud: string; nombre: string; robots: string; fechaEntrega: string }) =>
+    baseTemplate('📦 Confirmación de Entrega', `
+      <p>Hola <strong>${data.nombre}</strong>,</p>
+      <div class="success-box">
+        <p>Los robots han sido entregados exitosamente en la fecha programada.</p>
+      </div>
+      <table>
+        <tr><td>Número de Solicitud:</td><td><strong>${data.numeroSolicitud}</strong></td></tr>
+        <tr><td>Robots:</td><td>${data.robots}</td></tr>
+        <tr><td>Fecha de Entrega:</td><td>${data.fechaEntrega}</td></tr>
+      </table>
+      <p>Adjunto encontrarás el PDF de confirmación de la entrega.</p>
     `)
 };
 

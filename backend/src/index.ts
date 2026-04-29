@@ -7,6 +7,7 @@ import prestamoRoutes from './routes/prestamo.routes';
 import robotRoutes from './routes/robot.routes';
 import configuracionRoutes from './routes/configuracion.routes';
 import testRoutes from './routes/test.routes';
+import regionRoutes from './routes/region.routes';
 import { iniciarCronJobs } from './services/notification.service';
 
 dotenv.config();
@@ -29,6 +30,7 @@ app.use('/api/usuarios', userRoutes);
 app.use('/api/prestamos', prestamoRoutes);
 app.use('/api/robots', robotRoutes);
 app.use('/api/configuracion', configuracionRoutes);
+app.use('/api/regiones', regionRoutes);
 app.use('/api/test', testRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
