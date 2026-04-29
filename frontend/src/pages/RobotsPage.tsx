@@ -49,7 +49,7 @@ export default function RobotsPage() {
 
   useEffect(() => {
     cargar()
-  }, [filtroFamilia, filtroEstado, currentRegion, addNotification])
+  }, [filtroFamilia, filtroEstado, currentRegion])
 
   const handleGuardar = async (data: any) => {
     try {
