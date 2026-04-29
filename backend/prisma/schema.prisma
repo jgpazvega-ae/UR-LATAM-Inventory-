@@ -10,6 +10,74 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== REGIONES E IDIOMAS ====================
+
+model Region {
+  id                String    @id @default(cuid())
+  codigo            String    @unique
+  nombre            String
+  idiomaPrincipal   Idioma    @relation("RegionIdiomaPrincipal", fields: [idiomaPrincipalId], references: [id])
+  idiomaPrincipalId String
+  codigoIso         String
+  zonaHoraria       String
+  formatoFecha      String    @default("DD/MM/YYYY")
+  formatoMoneda     String    @default("MXN")
+  activa            Boolean   @default(true)
+  fechaCreacion     DateTime  @default(now())
+  fechaModificacion DateTime  @updatedAt
+
+  usuarios              Usuario[] @relation("UsuarioRegion")
+  distribuidores        Distribuidor[]
+  robots                Robot[]
+  prestamos             Prestamo[]
+  configuracionRegional ConfiguracionRegional[]
+
+  @@map("regiones")
+}
+
+model Idioma {
+  id                String    @id @default(cuid())
+  codigo            String    @unique
+  nombre            String
+  codigoIso         String
+  activo            Boolean   @default(true)
+  fechaCreacion     DateTime  @default(now())
+
+  regionesPrincipal     Region[] @relation("RegionIdiomaPrincipal")
+  usuarios              Usuario[] @relation("UsuarioIdioma")
+  configuracionRegional ConfiguracionRegional[]
+
+  @@map("idiomas")
+}
+
+model ConfiguracionRegional {
+  id                       String    @id @default(cuid())
+  regionId                 String
+  region                   Region    @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  idiomaId                 String
+  idioma                   Idioma    @relation(fields: [idiomaId], references: [id], onDelete: Cascade)
+  diasMinimosAnticipacion  Int       @default(7)
+  diasVencimientoAlerta    Int       @default(7)
+  correoAdminPrincipal     String
+  correoAdminCopia1        String?
+  correoAdminCopia2        String?
+  horariosNotificacion     String    @default("[\"08:00\", \"12:00\", \"16:00\"]")
+  zonaHoraria              String    // Sincronizar con Region.zonaHoraria
+  formatoFecha             String    // Sincronizar con Region.formatoFecha
+  smtpHost                 String?
+  smtpPort                 Int?      @default(587)
+  smtpUser                 String?
+  smtpPassword             String?
+  smtpFromEmail            String?   @default("noreply@teradyne-robotics.com")
+  fechaCreacion            DateTime  @default(now())
+  fechaModificacion        DateTime  @updatedAt
+
+  @@unique([regionId, idiomaId])
+  @@map("configuracion_regional")
+}
+
+// ==================== USUARIOS ====================
+
 model Usuario {
   id                      String    @id @default(cuid())
   username                String    @unique
@@ -19,6 +87,13 @@ model Usuario {
   rol                     Rol       @default(VENDEDOR)
   activo                  Boolean   @default(false)
   forcePasswordReset      Boolean   @default(false)
+
+  // Multi-región e idioma
+  regionId                String
+  region                  Region    @relation("UsuarioRegion", fields: [regionId], references: [id])
+  idiomaPreferidoId       String
+  idiomaPreferido         Idioma    @relation("UsuarioIdioma", fields: [idiomaPreferidoId], references: [id])
+
   distribuidorId          String?
   distribuidor            Distribuidor? @relation(fields: [distribuidorId], references: [id])
   fechaCreacion           DateTime  @default(now())
@@ -26,28 +101,41 @@ model Usuario {
   fechaModificacion       DateTime  @updatedAt
 
   // Relaciones
-  solicitudesCreadas     Prestamo[] @relation("solicitante")
-  solicitudesAprobadas   Prestamo[] @relation("aprobador")
-  salidaConfirmadas      Prestamo[] @relation("servicioSalida")
-  recepcionConfirmadas   Prestamo[] @relation("servicioRecepcion")
+  solicitudesCreadas      Prestamo[] @relation("solicitante")
+  solicitudesAprobadas    Prestamo[] @relation("aprobador")
+  salidaConfirmadas       Prestamo[] @relation("servicioSalida")
+  recepcionConfirmadas    Prestamo[] @relation("servicioRecepcion")
+  historialRobots         HistorialRobot[]
 
+  @@index([regionId])
   @@map("usuarios")
 }
 
+// ==================== DISTRIBUIDORES ====================
+
 model Distribuidor {
   id                String    @id @default(cuid())
-  nombre            String    @unique
+  nombre            String
   contactoPrincipal String?
   correo            String?
   telefono          String?
+
+  // Multi-región
+  regionId          String
+  region            Region    @relation(fields: [regionId], references: [id])
+
   fechaCreacion     DateTime  @default(now())
   fechaModificacion DateTime  @updatedAt
 
-  usuarios  Usuario[]
-  prestamos Prestamo[]
+  usuarios          Usuario[]
+  prestamos         Prestamo[]
 
+  @@unique([nombre, regionId])
+  @@index([regionId])
   @@map("distribuidores")
 }
+
+// ==================== ROBOTS ====================
 
 model FamiliaRobot {
   id            String   @id @default(cuid())
@@ -70,12 +158,57 @@ model Robot {
   ubicacionActual        String?
   fechaAdquisicion       DateTime?
   notas                  String?
+
+  // Multi-región
+  regionId               String
+  region                 Region    @relation(fields: [regionId], references: [id])
+
   fechaUltimaActualizacion DateTime @updatedAt
 
-  detallesPrestamo DetallePrestamoRobot[]
+  detallesPrestamo       DetallePrestamoRobot[]
+  historialRobot         HistorialRobot[]
 
+  @@index([regionId, estado])
   @@map("robots")
 }
+
+// ==================== HISTORIAL DE ROBOTS ====================
+
+model HistorialRobot {
+  id                String    @id @default(cuid())
+  robotId           String
+  robot             Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+
+  // Quien realizó el cambio
+  usuarioId         String
+  usuario           Usuario   @relation(fields: [usuarioId], references: [id])
+
+  // Información del evento
+  tipoEvento        TipoEventoRobot  // PRESTAMO_INICIADO, PRESTAMO_DEVUELTO, DAÑADO, REPARADO, etc
+  estadoAnterior    EstadoRobot?     // Estado anterior del robot
+  estadoNuevo       EstadoRobot      // Estado nuevo del robot
+  descripcion       String?          // "Prestado a cliente X", "Dañado durante transporte", etc
+
+  // Información del préstamo (si aplica)
+  prestamoId        String?          // Vincular con solicitud de préstamo
+  prestamo          Prestamo?        @relation(fields: [prestamoId], references: [id])
+  fechaPrestamo     DateTime?        // Fecha inicio del préstamo
+  fechaDevolucion   DateTime?        // Fecha devolvimiento
+
+  // Información del daño (si aplica)
+  descripcionDano   String?          // Descripción del daño
+  requisitosReparacion String?       // Qué se necesita para reparar
+
+  fechaEvento       DateTime  @default(now())
+  fechaCreacion     DateTime  @default(now())
+  fechaModificacion DateTime  @updatedAt
+
+  @@index([robotId, tipoEvento])
+  @@index([prestamoId])
+  @@map("historial_robots")
+}
+
+// ==================== PRÉSTAMOS ====================
 
 model Prestamo {
   id                       String    @id @default(cuid())
@@ -106,8 +239,14 @@ model Prestamo {
   pdfUriel                 String?
   pdfServicio              String?
 
-  detalles DetallePrestamoRobot[]
+  // Multi-región
+  regionId                 String
+  region                   Region    @relation(fields: [regionId], references: [id])
 
+  detalles                 DetallePrestamoRobot[]
+  historialRobots          HistorialRobot[]
+
+  @@index([regionId, estado])
   @@map("prestamos")
 }
 
@@ -122,6 +261,8 @@ model DetallePrestamoRobot {
 
   @@map("detalles_prestamo_robots")
 }
+
+// ==================== CONFIGURACIÓN GLOBAL ====================
 
 model Configuracion {
   id                        String   @id @default(cuid())
@@ -145,6 +286,8 @@ model Configuracion {
   @@map("configuracion")
 }
 
+// ==================== ENUMERACIONES ====================
+
 enum Rol {
   VENDEDOR
   GERENTE_VENTAS
@@ -157,6 +300,7 @@ enum EstadoRobot {
   EN_PRESTAMO
   MANTENIMIENTO
   RETIRADO
+  DANADO
 }
 
 enum EstadoPrestamo {
@@ -177,3 +321,16 @@ enum EstadoSistema {
   ACTIVO
   MANTENIMIENTO
 }
+
+enum TipoEventoRobot {
+  PRESTAMO_INICIADO
+  PRESTAMO_DEVUELTO
+  DANADO
+  REPARADO
+  MANTENIMIENTO_INICIO
+  MANTENIMIENTO_FIN
+  RETIRADO
+  UBICACION_CAMBIO
+  ESTADO_CAMBIO
+}
+
