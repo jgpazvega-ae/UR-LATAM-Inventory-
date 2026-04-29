@@ -67,6 +67,15 @@
             <p id="userName" class="text-sm font-semibold"></p>
             <p id="userRole" class="text-xs text-blue-200"></p>
           </div>
+          <div class="relative">
+            <button id="notifBellBtn" class="relative bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm transition">
+              🔔
+              <span id="notifBadge" class="hidden absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+            </button>
+            <div id="notifPanel" class="hidden absolute right-0 mt-2 w-80 bg-white text-gray-900 rounded-lg shadow-2xl z-50 max-h-96 overflow-y-auto">
+              <div id="notifList"></div>
+            </div>
+          </div>
           <button id="logoutBtn" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm transition">Salir</button>
         </div>
       </div>
@@ -499,6 +508,12 @@
       showLogin();
     }
 
+    // Emails con privilegios admin extendidos (Uriel y Giovanny actúan como admins)
+    const EMAILS_PRIVILEGIADOS = [
+      'uriel.fraire@teradyne-robotics.com',
+      'jose-giovanny.paz@teradyne-robotics.com'
+    ];
+
     function canEditRobots() {
       return currentUser && (currentUser.rol === 'ADMIN' || currentUser.rol === 'SERVICIO');
     }
@@ -513,6 +528,132 @@
 
     function canManageSolicitud() {
       return currentUser && (currentUser.rol === 'ADMIN' || currentUser.rol === 'GERENTE_VENTAS' || currentUser.rol === 'SERVICIO');
+    }
+
+    function hasAdminPrivileges() {
+      return currentUser && (
+        currentUser.rol === 'ADMIN' ||
+        currentUser.rol === 'GERENTE_VENTAS' ||
+        currentUser.rol === 'SERVICIO' ||
+        EMAILS_PRIVILEGIADOS.includes(currentUser.email)
+      );
+    }
+
+    function isServicio() {
+      return currentUser && currentUser.rol === 'SERVICIO';
+    }
+
+    // ============ NOTIFICACIONES IN-APP ============
+    function ensureNotifications() {
+      if (!store.notificaciones) {
+        store.notificaciones = [];
+        saveStore(store);
+      }
+    }
+
+    function addNotification({ destinatarios, titulo, mensaje, tipo, solicitudId }) {
+      ensureNotifications();
+      const dests = Array.isArray(destinatarios) ? destinatarios : [destinatarios];
+      dests.forEach(userId => {
+        store.notificaciones.push({
+          id: 'n' + Date.now() + Math.random().toString(36).slice(2, 6),
+          userId,
+          titulo,
+          mensaje,
+          tipo: tipo || 'info',
+          solicitudId: solicitudId || null,
+          leida: false,
+          fecha: new Date().toISOString()
+        });
+      });
+      saveStore(store);
+      renderNotifBadge();
+    }
+
+    function getNotifsForUser() {
+      ensureNotifications();
+      if (!currentUser) return [];
+      return store.notificaciones
+        .filter(n => n.userId === currentUser.id)
+        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    }
+
+    function unreadCount() {
+      return getNotifsForUser().filter(n => !n.leida).length;
+    }
+
+    function markAllNotifsRead() {
+      ensureNotifications();
+      store.notificaciones.forEach(n => {
+        if (n.userId === currentUser.id) n.leida = true;
+      });
+      saveStore(store);
+      renderNotifBadge();
+      renderNotifList();
+    }
+
+    function notifIcon(tipo) {
+      return { aprobacion: '✅', rechazo: '❌', entrega: '📦', recoleccion: '🚚', devolucion: '🔄', info: 'ℹ️' }[tipo] || '🔔';
+    }
+
+    function renderNotifBadge() {
+      const badge = document.getElementById('notifBadge');
+      if (!badge) return;
+      const c = unreadCount();
+      if (c > 0) {
+        badge.textContent = c > 99 ? '99+' : c;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function renderNotifList() {
+      const list = document.getElementById('notifList');
+      if (!list) return;
+      const notifs = getNotifsForUser().slice(0, 30);
+      if (notifs.length === 0) {
+        list.innerHTML = '<p class="text-sm text-gray-500 text-center py-6">No tienes notificaciones</p>';
+        return;
+      }
+      list.innerHTML = notifs.map(n => `
+        <div class="${n.leida ? 'bg-white' : 'bg-blue-50'} border-b border-gray-100 px-4 py-3 hover:bg-gray-50 cursor-pointer" data-notif-solicitud="${n.solicitudId || ''}">
+          <div class="flex items-start gap-2">
+            <span class="text-lg">${notifIcon(n.tipo)}</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-gray-900">${n.titulo}</p>
+              <p class="text-xs text-gray-600 mt-0.5">${n.mensaje}</p>
+              <p class="text-xs text-gray-400 mt-1">${new Date(n.fecha).toLocaleString('es-ES')}</p>
+            </div>
+            ${!n.leida ? '<span class="w-2 h-2 bg-blue-500 rounded-full mt-2"></span>' : ''}
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('[data-notif-solicitud]').forEach(el => {
+        el.addEventListener('click', () => {
+          const sId = el.dataset.notifSolicitud;
+          toggleNotifPanel(false);
+          if (sId) {
+            switchTab('solicitudes');
+          }
+        });
+      });
+    }
+
+    function toggleNotifPanel(forceState) {
+      const panel = document.getElementById('notifPanel');
+      const willOpen = forceState !== undefined ? forceState : panel.classList.contains('hidden');
+      if (willOpen) {
+        renderNotifList();
+        panel.classList.remove('hidden');
+        // Marcar como leídas al abrir (después de un breve delay)
+        setTimeout(() => {
+          markAllNotifsRead();
+        }, 800);
+      } else {
+        panel.classList.add('hidden');
+      }
     }
 
     // ============ UI ============
@@ -935,6 +1076,13 @@
                 <button data-reject-solicitud="${s.id}" class="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-medium transition">Rechazar</button>
               </div>
             ` : ''}
+            ${isServicio() && s.estado === 'APROBADA' ? `
+              <div class="pt-4 border-t border-gray-200">
+                <button data-listo-solicitud="${s.id}" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                  ✅ Marcar como recolectado
+                </button>
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');
@@ -944,6 +1092,9 @@
       });
       document.querySelectorAll('[data-reject-solicitud]').forEach(btn => {
         btn.addEventListener('click', () => rejectSolicitud(btn.dataset.rejectSolicitud));
+      });
+      document.querySelectorAll('[data-listo-solicitud]').forEach(btn => {
+        btn.addEventListener('click', () => markRobotAsCollected(btn.dataset.listoSolicitud));
       });
     }
 
@@ -1005,8 +1156,21 @@
         s.estado = 'APROBADA';
         const robot = store.robots.find(r => r.id === s.robotId);
         const vendedor = store.users.find(u => u.id === s.vendedorId);
+        const servicio = store.users.filter(u => u.rol === 'SERVICIO');
         saveStore(store);
-        showAlert(`✅ Solicitud aprobada. Email de confirmación enviado a ${vendedor?.nombre}`);
+
+        // Notificar al equipo de servicio
+        if (servicio.length > 0) {
+          addNotification({
+            destinatarios: servicio.map(s => s.id),
+            titulo: '📦 Robot listo para recoger',
+            mensaje: `El robot ${robot?.numeroSerie} (${robot?.modelo}) solicitado por ${vendedor?.nombre} ha sido aprobado y está listo para recoger.`,
+            tipo: 'aprobacion',
+            solicitudId: id
+          });
+        }
+
+        showAlert(`✅ Solicitud aprobada. Notificaciones enviadas a equipo de servicio`);
         renderSolicitudes();
       }
     }
@@ -1017,8 +1181,54 @@
         const s = store.solicitudes[idx];
         s.estado = 'RECHAZADA';
         const vendedor = store.users.find(u => u.id === s.vendedorId);
+        const robot = store.robots.find(r => r.id === s.robotId);
         saveStore(store);
-        showAlert(`✅ Solicitud rechazada. Email de notificación enviado a ${vendedor?.nombre}`);
+
+        // Notificar al vendedor del rechazo
+        if (vendedor) {
+          addNotification({
+            destinatarios: [vendedor.id],
+            titulo: '❌ Solicitud rechazada',
+            mensaje: `Tu solicitud del robot ${robot?.numeroSerie} (${robot?.modelo}) ha sido rechazada.`,
+            tipo: 'rechazo',
+            solicitudId: id
+          });
+        }
+
+        showAlert(`✅ Solicitud rechazada. Notificación enviada a ${vendedor?.nombre}`);
+        renderSolicitudes();
+      }
+    }
+
+    function markRobotAsCollected(id) {
+      const idx = store.solicitudes.findIndex(s => s.id === id);
+      if (idx >= 0) {
+        const s = store.solicitudes[idx];
+        s.estado = 'RECOLECTADO';
+        const robot = store.robots.find(r => r.id === s.robotId);
+        const vendedor = store.users.find(u => u.id === s.vendedorId);
+        const servicio = store.users.filter(u => u.rol === 'SERVICIO');
+        const giovanny = store.users.find(u => u.email === 'jose-giovanny.paz@teradyne-robotics.com');
+
+        saveStore(store);
+
+        // Notificar a destinatarios múltiples
+        const destinatarios = new Set();
+        if (vendedor) destinatarios.add(vendedor.id);
+        if (giovanny && giovanny.id !== currentUser.id) destinatarios.add(giovanny.id);
+        servicio.forEach(s => destinatarios.add(s.id));
+
+        if (destinatarios.size > 0) {
+          addNotification({
+            destinatarios: Array.from(destinatarios),
+            titulo: '🚚 Robot recolectado',
+            mensaje: `El robot ${robot?.numeroSerie} (${robot?.modelo}) ha sido recolectado por ${currentUser.nombre}. Demo iniciado.`,
+            tipo: 'recoleccion',
+            solicitudId: id
+          });
+        }
+
+        showAlert(`✅ Robot marcado como recolectado. Notificaciones enviadas.`);
         renderSolicitudes();
       }
     }
@@ -1091,6 +1301,15 @@
     document.getElementById('solicitudForm').addEventListener('submit', saveSolicitud);
 
     document.getElementById('changePasswordForm').addEventListener('submit', changePassword);
+
+    document.getElementById('notifBellBtn').addEventListener('click', () => toggleNotifPanel());
+    document.getElementById('notifPanel').addEventListener('click', (e) => e.stopPropagation());
+    document.addEventListener('click', () => {
+      const panel = document.getElementById('notifPanel');
+      if (!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+      }
+    });
 
     document.querySelectorAll('.tab-btn').forEach(b => {
       b.addEventListener('click', () => switchTab(b.dataset.tab));
