@@ -102,6 +102,10 @@ model Prestamo {
   usuarioAprobador         Usuario?  @relation("aprobador", fields: [usuarioAprobadorId], references: [id])
   fechaModificacion        DateTime  @updatedAt
 
+  pdfVendedor              String?
+  pdfUriel                 String?
+  pdfServicio              String?
+
   detalles DetallePrestamoRobot[]
 
   @@map("prestamos")

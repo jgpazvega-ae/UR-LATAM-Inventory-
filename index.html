@@ -438,6 +438,11 @@
           <input id="formSolicitudFechaFin" type="date" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
         </div>
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Cargar PDF (opcional)</label>
+          <input id="formSolicitudPDF" type="file" accept=".pdf" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          <p class="text-xs text-gray-500 mt-1">Máximo 10 MB</p>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
           <textarea id="formSolicitudObservaciones" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
         </div>
@@ -1349,29 +1354,62 @@
         return;
       }
 
-      const data = {
-        robotId,
-        fechaInicio,
-        fechaFin,
-        observaciones: document.getElementById('formSolicitudObservaciones').value.trim(),
-      };
+      const pdfFile = document.getElementById('formSolicitudPDF').files[0];
+      const observaciones = document.getElementById('formSolicitudObservaciones').value.trim();
 
       const gerente = store.users.find(u => u.rol === 'GERENTE_VENTAS');
-      const solicitud = {
-        id: 's' + Date.now(),
-        ...data,
-        vendedorId: currentUser.id,
-        estado: 'PENDIENTE',
-        fechaCreacion: new Date().toISOString().split('T')[0],
-      };
 
-      store.solicitudes.push(solicitud);
-      saveStore(store);
+      // Intentar enviar a través del API si está disponible
+      const formData = new FormData();
+      formData.append('robotIds', JSON.stringify([robotId]));
+      formData.append('distribuidorId', currentUser.distribuidorId || 'd1');
+      formData.append('fechaInicio', fechaInicio);
+      formData.append('fechaFin', fechaFin);
+      formData.append('motivo', observaciones);
+      if (pdfFile) {
+        formData.append('pdf', pdfFile);
+      }
 
-      // Simular email al gerente
-      showAlert(`✅ Solicitud enviada. Email de autorización enviado a ${gerente?.nombre}`);
-      closeSolicitudModal();
-      renderSolicitudes();
+      fetch('/api/prestamos', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token') || ''}`
+        },
+        body: formData
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('API Error: ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        showAlert(`✅ Solicitud enviada. Email de autorización enviado a ${gerente?.nombre}`);
+        closeSolicitudModal();
+        renderSolicitudes();
+      })
+      .catch(error => {
+        // Fallback a almacenamiento local
+        const data = {
+          robotId,
+          fechaInicio,
+          fechaFin,
+          observaciones: observaciones,
+        };
+
+        const solicitud = {
+          id: 's' + Date.now(),
+          ...data,
+          vendedorId: currentUser.id,
+          estado: 'PENDIENTE',
+          fechaCreacion: new Date().toISOString().split('T')[0],
+        };
+
+        store.solicitudes.push(solicitud);
+        saveStore(store);
+
+        showAlert(`✅ Solicitud enviada. Email de autorización enviado a ${gerente?.nombre}`);
+        closeSolicitudModal();
+        renderSolicitudes();
+      });
     }
 
     function approveSolicitud(id) {

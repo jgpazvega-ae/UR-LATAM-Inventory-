@@ -10,11 +10,12 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No autorizado' });
+      res.status(401).json({ error: 'No autorizado' });
+      return;
     }
 
     const token = authHeader.substring(7);
@@ -26,20 +27,22 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     });
 
     if (!user || !user.activo) {
-      return res.status(401).json({ error: 'Usuario no activo' });
+      res.status(401).json({ error: 'Usuario no activo' });
+      return;
     }
 
     req.user = { id: user.id, rol: user.rol, email: user.email };
     next();
   } catch {
-    return res.status(401).json({ error: 'Token inválido' });
+    res.status(401).json({ error: 'Token inválido' });
   }
 };
 
 export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user || !roles.includes(req.user.rol)) {
-      return res.status(403).json({ error: 'Sin permisos suficientes' });
+      res.status(403).json({ error: 'Sin permisos suficientes' });
+      return;
     }
     next();
   };
