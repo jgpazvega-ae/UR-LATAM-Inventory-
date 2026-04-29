@@ -20,6 +20,10 @@
 ✅ **Dashboard** con estadísticas en vivo
 ✅ **Panel Administrativo** completo
 ✅ **Responsive Design** con Tailwind CSS
+✅ **Multi-Región** - Soporte para México, Brasil y USA con aislamiento de datos
+✅ **Multi-Idioma** - Español, Portugués e Inglés con cambio dinámico
+✅ **Historial de Robots** - Auditoría completa de préstamos, devoluciones, daños y reparaciones
+✅ **Reportes Detallados** - Historial y estadísticas por robot
 
 ---
 
@@ -62,6 +66,13 @@ npm run dev
 - **Vendedores:** (5 usuarios) / password123
 - **Técnico:** (2 usuarios) / password123
 
+🌍 **Seleccionar Región e Idioma:**
+- En la pantalla de login, selecciona tu región (México, Brasil, USA) y tu idioma preferido (Español, Portugués, English)
+- Una vez dentro, puedes cambiar región e idioma desde el selector en la esquina superior derecha del header
+
+🔗 **Demostración en Vivo:**
+- Accede a la demostración: https://jgpazvega-ae.github.io/UR-LATAM-Inventory-/
+
 Ver [SETUP.md](./docs/SETUP.md) para instalación completa y configuración.
 
 ---
@@ -71,6 +82,9 @@ Ver [SETUP.md](./docs/SETUP.md) para instalación completa y configuración.
 | Documento | Descripción |
 |-----------|------------|
 | [SPECIFICATION.md](./SPECIFICATION.md) | Especificación técnica completa (BD, flujos, requerimientos) |
+| [IMPLEMENTATION-GUIDE.md](./IMPLEMENTATION-GUIDE.md) | Guía completa de implementación multi-región y multi-idioma |
+| [TESTING.md](./TESTING.md) | Guía de testing con casos de prueba detallados |
+| [PROJECT-STATUS.md](./PROJECT-STATUS.md) | Estado del proyecto y lista de verificación |
 | [docs/SETUP.md](./docs/SETUP.md) | Guía de instalación y configuración detallada |
 | [docs/API.md](./docs/API.md) | Documentación de endpoints (en desarrollo) |
 
@@ -126,6 +140,49 @@ Ver [SETUP.md](./docs/SETUP.md) para instalación completa y configuración.
     ├── SETUP.md
     └── API.md
 ```
+
+---
+
+## 🌍 Características Multi-Región & Multi-Idioma
+
+### Regiones Soportadas
+- **México (MX)** - Zona horaria: America/Mexico_City
+- **Brasil (BR)** - Zona horaria: America/Sao_Paulo
+- **USA** - Zona horaria: America/New_York
+
+### Idiomas Soportados
+- **Español (ES)** - Idioma predeterminado para México
+- **Portugués (PT)** - Idioma predeterminado para Brasil
+- **Inglés (EN)** - Idioma predeterminado para USA
+
+### Aislamiento de Datos por Región
+- ✅ Robots filtrados por región del usuario
+- ✅ Usuarios solo pueden ver su región
+- ✅ Solicitudes aisladas por región
+- ✅ Historial regional independiente
+
+### Cambio de Región e Idioma
+1. **En Login:** Selecciona región e idioma antes de ingresar
+2. **En Aplicación:** Usa los selectores en la barra superior derecha
+3. **Persistencia:** Las selecciones se guardan automáticamente
+
+---
+
+## 📜 Sistema de Historial y Auditoría
+
+### Eventos Registrados
+- ✅ Préstamo iniciado (robot en transporte)
+- ✅ Préstamo devuelto (robot recibido)
+- ✅ Robot dañado (con descripción del daño)
+- ✅ Robot reparado (vuelto a servicio)
+- ✅ Cambios de ubicación
+- ✅ Cambios de estado
+
+### Acceso al Historial
+- Ver historial completo: `/api/robots/:id/historial`
+- Generar reporte: `/api/robots/:id/reportes`
+- Reportar daño: `POST /api/robots/:id/reportar-dano`
+- Registrar reparación: `POST /api/robots/:id/reparar`
 
 ---
 
