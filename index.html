@@ -98,9 +98,39 @@
         <h2 class="text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
         <p class="text-gray-600 mb-6">Resumen del inventario de robots</p>
         <div id="dashboardStats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
-        <div class="bg-white rounded-xl shadow p-6">
+        <div class="bg-white rounded-xl shadow p-6 mb-6">
           <h3 class="text-lg font-bold text-gray-900 mb-4">Distribución por Familia</h3>
           <div id="familyChart" class="space-y-3"></div>
+        </div>
+        <div id="loansSection" class="hidden">
+          <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Robots en Préstamo</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="bg-blue-50 rounded-lg p-4">
+                <p class="text-xs text-gray-600">Préstamos Activos</p>
+                <p id="activeLoanCount" class="text-2xl font-bold text-blue-600">0</p>
+              </div>
+              <div class="bg-red-50 rounded-lg p-4">
+                <p class="text-xs text-gray-600">Préstamos Vencidos</p>
+                <p id="overdLoanCount" class="text-2xl font-bold text-red-600">0</p>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Robot</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Solicitado por</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Inicio</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Fin</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="loansTableBody" class="divide-y divide-gray-200"></tbody>
+              </table>
+              <div id="loansEmpty" class="text-center py-8 text-gray-500">No hay préstamos en progreso</div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -345,8 +375,8 @@
           <input id="formSolicitudFecha" type="date" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Duración (días) *</label>
-          <input id="formSolicitudDuracion" type="number" min="1" value="7" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Fin *</label>
+          <input id="formSolicitudFechaFin" type="date" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
@@ -745,6 +775,56 @@
           </div>
         `;
       }).join('');
+
+      // Show loans section only to admin and sales admin
+      const canViewLoans = currentUser && (currentUser.rol === 'ADMIN' || currentUser.rol === 'GERENTE_VENTAS');
+      const loansSection = document.getElementById('loansSection');
+      if (canViewLoans) {
+        loansSection.classList.remove('hidden');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const activeLoan = store.solicitudes.filter(s =>
+          (s.estado === 'APROBADA' || s.estado === 'RECOLECTADO') &&
+          new Date(s.fechaFin) >= today
+        );
+        const overdLoan = store.solicitudes.filter(s =>
+          (s.estado === 'APROBADA' || s.estado === 'RECOLECTADO') &&
+          new Date(s.fechaFin) < today
+        );
+
+        document.getElementById('activeLoanCount').textContent = activeLoan.length;
+        document.getElementById('overdLoanCount').textContent = overdLoan.length;
+
+        const allLoans = activeLoan.concat(overdLoan);
+        const loansBody = document.getElementById('loansTableBody');
+        const loansEmpty = document.getElementById('loansEmpty');
+
+        if (allLoans.length === 0) {
+          loansBody.innerHTML = '';
+          loansEmpty.classList.remove('hidden');
+        } else {
+          loansEmpty.classList.add('hidden');
+          loansBody.innerHTML = allLoans.map(s => {
+            const robot = store.robots.find(r => r.id === s.robotId);
+            const user = store.users.find(u => u.id === s.vendedorId);
+            const isOverdue = new Date(s.fechaFin) < today;
+            const statusColor = isOverdue ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+            const statusText = isOverdue ? 'VENCIDO' : 'ACTIVO';
+            return `
+              <tr>
+                <td class="px-4 py-2">${robot?.numeroSerie || 'N/A'} (${robot?.modelo || 'N/A'})</td>
+                <td class="px-4 py-2">${user?.nombre || 'N/A'}</td>
+                <td class="px-4 py-2">${s.fechaInicio}</td>
+                <td class="px-4 py-2">${s.fechaFin}</td>
+                <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs font-medium ${statusColor}">${statusText}</span></td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } else {
+        loansSection.classList.add('hidden');
+      }
     }
 
     // ============ ROBOTS ============
@@ -968,6 +1048,13 @@
         return;
       }
 
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(data.email)) {
+        showAlert('Ingresa un email válido', 'error');
+        return;
+      }
+
       if (id) {
         const idx = store.users.findIndex(u => u.id === id);
         if (idx >= 0) {
@@ -1046,8 +1133,8 @@
                 <p class="font-semibold text-gray-900">${s.fechaInicio}</p>
               </div>
               <div>
-                <p class="text-xs text-gray-600">Duración</p>
-                <p class="font-semibold text-gray-900">${s.duracion} días</p>
+                <p class="text-xs text-gray-600">Fecha fin</p>
+                <p class="font-semibold text-gray-900">${s.fechaFin}</p>
               </div>
             </div>
             ${s.observaciones ? `<p class="text-sm text-gray-700 mb-4"><strong>Observaciones:</strong> ${s.observaciones}</p>` : ''}
@@ -1087,9 +1174,12 @@
           `<option value="${r.id}">${r.numeroSerie} - ${r.modelo}</option>`
         ).join('');
 
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('formSolicitudFecha').value = today;
-      document.getElementById('formSolicitudDuracion').value = '7';
+      const today = new Date();
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 7);
+
+      document.getElementById('formSolicitudFecha').value = today.toISOString().split('T')[0];
+      document.getElementById('formSolicitudFechaFin').value = endDate.toISOString().split('T')[0];
       document.getElementById('formSolicitudObservaciones').value = '';
       document.getElementById('solicitudModal').classList.remove('hidden');
     }
@@ -1100,17 +1190,50 @@
 
     function saveSolicitud(e) {
       e.preventDefault();
-      const data = {
-        robotId: document.getElementById('formSolicitudRobot').value,
-        fechaInicio: document.getElementById('formSolicitudFecha').value,
-        duracion: parseInt(document.getElementById('formSolicitudDuracion').value),
-        observaciones: document.getElementById('formSolicitudObservaciones').value.trim(),
-      };
+      const fechaInicio = document.getElementById('formSolicitudFecha').value;
+      const fechaFin = document.getElementById('formSolicitudFechaFin').value;
+      const robotId = document.getElementById('formSolicitudRobot').value;
 
-      if (!data.robotId) {
+      if (!robotId) {
         showAlert('Selecciona un robot', 'error');
         return;
       }
+
+      if (!fechaInicio || !fechaFin) {
+        showAlert('Debes seleccionar fechas de inicio y fin', 'error');
+        return;
+      }
+
+      if (fechaFin <= fechaInicio) {
+        showAlert('La fecha de fin debe ser posterior a la fecha de inicio', 'error');
+        return;
+      }
+
+      // Check for overlapping bookings
+      const existingBookings = store.solicitudes.filter(s =>
+        s.robotId === robotId &&
+        (s.estado === 'APROBADA' || s.estado === 'RECOLECTADO')
+      );
+
+      const hasOverlap = existingBookings.some(booking => {
+        const bookingStart = new Date(booking.fechaInicio);
+        const bookingEnd = new Date(booking.fechaFin);
+        const newStart = new Date(fechaInicio);
+        const newEnd = new Date(fechaFin);
+        return (newStart < bookingEnd && newEnd > bookingStart);
+      });
+
+      if (hasOverlap) {
+        showAlert('Este robot ya tiene una reserva en las fechas seleccionadas', 'error');
+        return;
+      }
+
+      const data = {
+        robotId,
+        fechaInicio,
+        fechaFin,
+        observaciones: document.getElementById('formSolicitudObservaciones').value.trim(),
+      };
 
       const gerente = store.users.find(u => u.rol === 'GERENTE_VENTAS');
       const solicitud = {

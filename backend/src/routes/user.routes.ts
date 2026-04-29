@@ -8,6 +8,7 @@ import {
   eliminarUsuario,
   listarDistribuidores,
   crearDistribuidor,
+  resetearPassword,
 } from '../controllers/user.controller';
 import { authenticate, authorize } from '../middleware/auth';
 
@@ -23,6 +24,7 @@ router.get('/:id', authorize('ADMIN', 'GERENTE_VENTAS'), obtenerUsuario);
 router.post('/', authorize('ADMIN'), crearUsuario);
 router.put('/:id', authorize('ADMIN'), actualizarUsuario);
 router.post('/:id/activar', authorize('ADMIN'), activarUsuario);
+router.post('/:usuarioId/resetear-password', authorize('ADMIN'), resetearPassword);
 router.delete('/:id', authorize('ADMIN'), eliminarUsuario);
 
 export default router;

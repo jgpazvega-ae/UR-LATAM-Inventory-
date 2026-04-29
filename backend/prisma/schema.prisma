@@ -11,18 +11,19 @@ datasource db {
 }
 
 model Usuario {
-  id                String    @id @default(cuid())
-  username          String    @unique
-  email             String    @unique
-  passwordHash      String
-  nombreCompleto    String
-  rol               Rol       @default(VENDEDOR)
-  activo            Boolean   @default(false)
-  distribuidorId    String?
-  distribuidor      Distribuidor? @relation(fields: [distribuidorId], references: [id])
-  fechaCreacion     DateTime  @default(now())
-  fechaUltimoLogin  DateTime?
-  fechaModificacion DateTime  @updatedAt
+  id                      String    @id @default(cuid())
+  username                String    @unique
+  email                   String    @unique
+  passwordHash            String
+  nombreCompleto          String
+  rol                     Rol       @default(VENDEDOR)
+  activo                  Boolean   @default(false)
+  forcePasswordReset      Boolean   @default(false)
+  distribuidorId          String?
+  distribuidor            Distribuidor? @relation(fields: [distribuidorId], references: [id])
+  fechaCreacion           DateTime  @default(now())
+  fechaUltimoLogin        DateTime?
+  fechaModificacion       DateTime  @updatedAt
 
   // Relaciones
   solicitudesCreadas     Prestamo[] @relation("solicitante")

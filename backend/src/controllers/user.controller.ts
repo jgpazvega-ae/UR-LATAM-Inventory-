@@ -185,3 +185,39 @@ export const crearDistribuidor = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: 'Error al crear distribuidor' });
   }
 };
+
+export const resetearPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.rol !== 'ADMIN') {
+      return res.status(403).json({ error: 'Solo administradores pueden resetear contraseñas' });
+    }
+
+    const { usuarioId } = req.params;
+    const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Generate temporary password (12 random characters)
+    const tempPassword = Math.random().toString(36).substring(2, 14);
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+    await prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        passwordHash,
+        forcePasswordReset: true,
+      },
+    });
+
+    return res.json({
+      mensaje: `Contraseña reseteada para ${usuario.nombreCompleto}`,
+      tempPassword,
+      instrucciones: 'Comparte esta contraseña temporal con el usuario. Deberá cambiarla al siguiente login.',
+    });
+  } catch (error) {
+    console.error('Error reseteando contraseña:', error);
+    return res.status(500).json({ error: 'Error al resetear contraseña' });
+  }
+};
