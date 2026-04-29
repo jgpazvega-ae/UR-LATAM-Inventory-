@@ -7,7 +7,7 @@ import { sendEmail, templates } from '../services/email.service';
 export const listarUsuarios = async (req: AuthRequest, res: Response) => {
   try {
     const { activo, rol } = req.query;
-    const where: any = {};
+    const where: any = { regionId: req.user!.regionId };
     if (activo !== undefined) where.activo = activo === 'true';
     if (rol) where.rol = rol;
 
@@ -36,8 +36,8 @@ export const listarUsuarios = async (req: AuthRequest, res: Response) => {
 export const obtenerUsuario = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const usuario = await prisma.usuario.findUnique({
-      where: { id },
+    const usuario = await prisma.usuario.findFirst({
+      where: { id, regionId: req.user!.regionId },
       include: { distribuidor: true },
     });
 
@@ -64,6 +64,15 @@ export const crearUsuario = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Email o usuario ya registrado' });
     }
 
+    const userRegion = await prisma.region.findFirst({
+      where: { id: req.user!.regionId },
+      include: { idiomaPreferido: true },
+    });
+
+    if (!userRegion) {
+      return res.status(500).json({ error: 'Región no encontrada' });
+    }
+
     const passwordHash = await bcrypt.hash(password || 'default', 12);
 
     const nuevoUsuario = await prisma.usuario.create({
@@ -75,6 +84,8 @@ export const crearUsuario = async (req: AuthRequest, res: Response) => {
         rol: rol || 'VENDEDOR',
         distribuidorId: distribuidorId || null,
         activo: activo ?? false,
+        regionId: req.user!.regionId,
+        idiomaPreferidoId: userRegion.idiomaPrincipalId,
       },
     });
 
@@ -99,7 +110,10 @@ export const actualizarUsuario = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { username, email, nombreCompleto, rol, distribuidorId, activo } = req.body;
 
-    const usuarioActual = await prisma.usuario.findUnique({ where: { id } });
+    const usuarioActual = await prisma.usuario.findFirst({
+      where: { id, regionId: req.user!.regionId },
+    });
+
     if (!usuarioActual) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
@@ -136,6 +150,14 @@ export const activarUsuario = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { distribuidorId } = req.body;
 
+    const usuarioActual = await prisma.usuario.findFirst({
+      where: { id, regionId: req.user!.regionId },
+    });
+
+    if (!usuarioActual) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
     const usuario = await prisma.usuario.update({
       where: { id },
       data: {
@@ -159,6 +181,15 @@ export const activarUsuario = async (req: AuthRequest, res: Response) => {
 export const eliminarUsuario = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { id, regionId: req.user!.regionId },
+    });
+
+    if (!usuario) {
+      return res.status(403).json({ error: 'No tiene permiso para eliminar este usuario' });
+    }
+
     await prisma.usuario.delete({ where: { id } });
     return res.json({ mensaje: 'Usuario eliminado' });
   } catch {
@@ -166,9 +197,10 @@ export const eliminarUsuario = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const listarDistribuidores = async (_req: AuthRequest, res: Response) => {
+export const listarDistribuidores = async (req: AuthRequest, res: Response) => {
   try {
     const distribuidores = await prisma.distribuidor.findMany({
+      where: { regionId: req.user!.regionId },
       orderBy: { nombre: 'asc' },
     });
     return res.json(distribuidores);
@@ -179,7 +211,9 @@ export const listarDistribuidores = async (_req: AuthRequest, res: Response) => 
 
 export const crearDistribuidor = async (req: AuthRequest, res: Response) => {
   try {
-    const distribuidor = await prisma.distribuidor.create({ data: req.body });
+    const distribuidor = await prisma.distribuidor.create({
+      data: { ...req.body, regionId: req.user!.regionId },
+    });
     return res.status(201).json(distribuidor);
   } catch {
     return res.status(500).json({ error: 'Error al crear distribuidor' });
@@ -193,7 +227,9 @@ export const resetearPassword = async (req: AuthRequest, res: Response) => {
     }
 
     const { usuarioId } = req.params;
-    const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
+    const usuario = await prisma.usuario.findFirst({
+      where: { id: usuarioId, regionId: req.user.regionId },
+    });
 
     if (!usuario) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
