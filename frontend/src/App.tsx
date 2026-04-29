@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { RegionLanguageProvider } from './contexts/RegionLanguageContext'
+import { NotificationProvider } from './contexts/NotificationContext'
 import Layout from './components/Layout'
+import Notifications from './components/Notifications'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
@@ -26,24 +28,27 @@ function App() {
   return (
     <AuthProvider>
       <RegionLanguageProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/usuarios" element={<UsuariosPage />} />
-              <Route path="/solicitudes" element={<SolicitudesPage />} />
-              <Route path="/solicitudes/nueva" element={<NuevaSolicitudPage />} />
-              <Route path="/solicitudes/:id" element={<SolicitudDetallePage />} />
-              <Route path="/robots" element={<RobotsPage />} />
-              <Route path="/configuracion" element={<ConfiguracionPage />} />
-              <Route path="/reportes/demos" element={<ReporteDemosPage />} />
-              <Route path="/gestion-contrasenas" element={<GestionContraseñasPage />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <NotificationProvider>
+          <BrowserRouter>
+            <Notifications />
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/usuarios" element={<UsuariosPage />} />
+                <Route path="/solicitudes" element={<SolicitudesPage />} />
+                <Route path="/solicitudes/nueva" element={<NuevaSolicitudPage />} />
+                <Route path="/solicitudes/:id" element={<SolicitudDetallePage />} />
+                <Route path="/robots" element={<RobotsPage />} />
+                <Route path="/configuracion" element={<ConfiguracionPage />} />
+                <Route path="/reportes/demos" element={<ReporteDemosPage />} />
+                <Route path="/gestion-contrasenas" element={<GestionContraseñasPage />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </NotificationProvider>
       </RegionLanguageProvider>
     </AuthProvider>
   )

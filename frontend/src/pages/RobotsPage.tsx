@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { robotService } from '../services/robot.service'
 import { useAuth } from '../contexts/AuthContext'
+import { useNotification } from '../contexts/NotificationContext'
 
 const estadoBadge: Record<string, string> = {
   DISPONIBLE: 'bg-green-100 text-green-800',
@@ -11,6 +12,7 @@ const estadoBadge: Record<string, string> = {
 
 export default function RobotsPage() {
   const { isAdmin, user } = useAuth()
+  const { addNotification } = useNotification()
   const puedeEditar = isAdmin || user?.rol === 'SERVICIO'
 
   const [robots, setRobots] = useState<any[]>([])
@@ -20,7 +22,6 @@ export default function RobotsPage() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
-  const [mensaje, setMensaje] = useState('')
 
   const cargar = async () => {
     setLoading(true)
@@ -36,7 +37,7 @@ export default function RobotsPage() {
       setFamilias(fs)
     } catch (err) {
       console.error(err)
-      setMensaje('Error al cargar robots')
+      addNotification('Error al cargar robots', 'error')
     } finally {
       setLoading(false)
     }
@@ -48,20 +49,18 @@ export default function RobotsPage() {
 
   const handleGuardar = async (data: any) => {
     try {
-      setMensaje('')
       if (editing?.id) {
         await robotService.actualizar(editing.id, data)
-        setMensaje('✅ Robot actualizado')
+        addNotification('Robot actualizado', 'success')
       } else {
         await robotService.crear(data)
-        setMensaje('✅ Robot creado')
+        addNotification('Robot creado', 'success')
       }
       setShowModal(false)
       setEditing(null)
-      setTimeout(() => setMensaje(''), 3000)
       cargar()
     } catch (err: any) {
-      setMensaje(err.response?.data?.error || 'Error al guardar')
+      addNotification(err.message || 'Error al guardar', 'error')
     }
   }
 
@@ -69,26 +68,15 @@ export default function RobotsPage() {
     if (!confirm('¿Eliminar este robot? Esta acción no se puede deshacer.')) return
     try {
       await robotService.eliminar(id)
-      setMensaje('✅ Robot eliminado')
-      setTimeout(() => setMensaje(''), 3000)
+      addNotification('Robot eliminado', 'success')
       cargar()
     } catch (err: any) {
-      setMensaje(err.response?.data?.error || 'Error al eliminar')
+      addNotification(err.message || 'Error al eliminar', 'error')
     }
   }
 
   return (
     <div className="space-y-6">
-      {mensaje && (
-        <div className={`px-4 py-3 rounded ${
-          mensaje.includes('Error')
-            ? 'bg-red-50 border border-red-200 text-red-800'
-            : 'bg-green-50 border border-green-200 text-green-800'
-        }`}>
-          {mensaje}
-        </div>
-      )}
-
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Inventario de Robots</h1>

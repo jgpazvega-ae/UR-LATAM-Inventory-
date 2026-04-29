@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { userService } from '../services/user.service'
 import { useAuth } from '../contexts/AuthContext'
+import { useNotification } from '../contexts/NotificationContext'
 
 const ROLES = [
   { value: 'VENDEDOR', label: 'Vendedor' },
@@ -24,6 +25,7 @@ const badgeRol: Record<string, string> = {
 
 export default function UsuariosPage() {
   const { isAdmin } = useAuth()
+  const { addNotification } = useNotification()
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -87,13 +89,15 @@ export default function UsuariosPage() {
 
       if (editing) {
         await userService.actualizar(editing.id, dataToSave)
+        addNotification('Usuario actualizado', 'success')
       } else {
         await userService.crear({ ...dataToSave, region: formData.region } as any)
+        addNotification('Usuario creado', 'success')
       }
       setShowModal(false)
       cargar()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      addNotification(err.message || 'Error al guardar usuario', 'error')
     }
   }
 
@@ -101,9 +105,10 @@ export default function UsuariosPage() {
     if (!confirm('¿Eliminar este usuario?')) return
     try {
       await userService.eliminar(id)
+      addNotification('Usuario eliminado', 'success')
       cargar()
-    } catch (err) {
-      console.error(err)
+    } catch (err: any) {
+      addNotification(err.message || 'Error al eliminar usuario', 'error')
     }
   }
 
