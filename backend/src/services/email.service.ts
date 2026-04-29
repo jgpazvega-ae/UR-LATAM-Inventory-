@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
+import prisma from '../config/db';
 
-const transporter = nodemailer.createTransport({
+let transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.EMAIL_PORT || '587'),
   secure: false,
@@ -9,6 +10,26 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
+
+const getTransporter = async () => {
+  try {
+    const config = await prisma.configuracion.findFirst();
+    if (config && config.smtpHost && config.smtpUser && config.smtpPassword) {
+      return nodemailer.createTransport({
+        host: config.smtpHost,
+        port: config.smtpPort || 587,
+        secure: false,
+        auth: {
+          user: config.smtpUser,
+          pass: config.smtpPassword,
+        },
+      });
+    }
+  } catch {
+    // Fall back to env variables if database query fails
+  }
+  return transporter;
+};
 
 interface EmailAttachment {
   filename: string;
@@ -27,8 +48,12 @@ interface EmailOptions {
 
 export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'noreply@teradyne-robotics.com',
+    const mailer = await getTransporter();
+    const config = await prisma.configuracion.findFirst().catch(() => null);
+    const fromEmail = config?.smtpFromEmail || process.env.EMAIL_FROM || 'noreply@teradyne-robotics.com';
+
+    await mailer.sendMail({
+      from: fromEmail,
       to: Array.isArray(options.to) ? options.to.join(',') : options.to,
       cc: options.cc ? (Array.isArray(options.cc) ? options.cc.join(',') : options.cc) : undefined,
       subject: options.subject,

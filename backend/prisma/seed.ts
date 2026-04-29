@@ -240,7 +240,7 @@ async function main() {
       data: {
         diasMinimosAnticipacion: 7,
         diasVencimientoAlerta: 7,
-        correoAdminPrincipal: adminEmail,
+        correoAdminPrincipal: 'admin@teradyne-robotics.com',
         horariosNotificacion: '["08:00", "12:00", "16:00"]',
       },
     });

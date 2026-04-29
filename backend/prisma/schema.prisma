@@ -132,6 +132,13 @@ model Configuracion {
   correoAdminCopia2         String?
   horariosNotificacion      String   @default("[\"08:00\", \"12:00\", \"16:00\"]")
   estadoSistema             EstadoSistema @default(ACTIVO)
+
+  smtpHost                  String?
+  smtpPort                  Int?      @default(587)
+  smtpUser                  String?
+  smtpPassword              String?
+  smtpFromEmail             String?   @default("noreply@teradyne-robotics.com")
+
   fechaCreacion             DateTime @default(now())
   fechaModificacion         DateTime @updatedAt
 
