@@ -1,4 +1,55 @@
-# 🔧 Guía de Solución: Backend y SMTP
+# 🔧 Guía de Solución: Backend, Base de Datos y SMTP
+
+## 0. 🗄️ Configurar Base de Datos (PostgreSQL)
+
+### Requisito: PostgreSQL debe estar instalado y corriendo
+
+**En Linux/Mac:**
+```bash
+# Instalar PostgreSQL
+brew install postgresql  # Mac
+sudo apt-get install postgresql postgresql-contrib  # Ubuntu/Debian
+
+# Iniciar el servicio
+brew services start postgresql  # Mac
+sudo systemctl start postgresql  # Linux
+```
+
+**En Windows:**
+- Descargar desde: https://www.postgresql.org/download/windows/
+- Ejecutar instalador y seguir instrucciones
+
+### Crear la base de datos
+
+```bash
+# Conectar como usuario postgres
+psql -U postgres
+
+# Dentro de PostgreSQL, ejecutar:
+CREATE DATABASE ur_latam_inventory;
+\q
+```
+
+### Aplicar migraciones
+
+```bash
+cd /home/user/UR-LATAM-Inventory-/backend
+npm run db:generate    # Generar tipos Prisma
+npm run db:migrate     # Aplicar migraciones
+npm run db:seed        # Cargar datos iniciales (usuarios, robots, etc.)
+```
+
+**Resultado esperado:**
+```
+✓ Familias de robots creadas
+✓ Distribuidores creados
+✓ Usuarios iniciales creados
+✓ 50+ robots cargados
+✓ Configuración inicial creada
+✅ Seed completado
+```
+
+---
 
 ## 1. ✅ Backend Ahora Está Corriendo
 
@@ -22,18 +73,9 @@ nohup npm run dev > backend.log 2>&1 &
 
 ## 2. 📧 Configurar SMTP (Gmail Recomendado)
 
-### Paso 1: Crear App Password en Google
-1. Ve a: https://myaccount.google.com/apppasswords
-2. Si pide 2FA, configúralo primero:
-   - https://myaccount.google.com/security
+### Opción A: Configurar a través de la UI (Recomendado)
 
-3. En App Passwords:
-   - **App**: Mail
-   - **Device**: Windows/Mac/Linux
-4. Google te da una contraseña de **16 caracteres**
-5. **Copia exactamente esa contraseña** (sin espacios)
-
-### Paso 2: Guardar en Configuración del Sistema
+**Requisito:** Base de datos debe estar corriendo
 
 1. **Login como Admin**
 2. Ve a **⚙️ Configuración**
@@ -48,6 +90,32 @@ Email Remitente:  noreply@teradyne-robotics.com
 ```
 
 4. Click **✅ Guardar Configuración**
+
+### Opción B: Configurar mediante .env (Si BD no está disponible)
+
+1. Abre `/backend/.env`
+2. Rellena estos campos:
+
+```env
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=tu-email@gmail.com
+EMAIL_PASS=tu-app-password-de-16-caracteres
+EMAIL_FROM=noreply@teradyne-robotics.com
+```
+
+3. Reinicia el backend: `npm run dev`
+
+### Paso 1: Crear App Password en Google
+1. Ve a: https://myaccount.google.com/apppasswords
+2. Si pide 2FA, configúralo primero:
+   - https://myaccount.google.com/security
+
+3. En App Passwords:
+   - **App**: Mail
+   - **Device**: Windows/Mac/Linux
+4. Google te da una contraseña de **16 caracteres**
+5. **Copia exactamente esa contraseña** (sin espacios)
 
 ### IMPORTANTE: Cosas comunes que fallan
 
@@ -134,11 +202,24 @@ Espera a ver:
 
 ## 5. ✅ Checklist Final
 
+### Base de Datos
+- [ ] PostgreSQL instalado y corriendo
+- [ ] Base de datos `ur_latam_inventory` creada
+- [ ] Migraciones aplicadas (`npm run db:migrate`)
+- [ ] Datos iniciales cargados (`npm run db:seed`)
+
+### Backend
 - [ ] Backend corriendo (`npm run dev` en terminal)
 - [ ] Backend responde en http://localhost:5000
-- [ ] Credenciales SMTP guardadas en ⚙️ Configuración
+- [ ] Health check muestra configuración: `curl http://localhost:5000/health`
+
+### SMTP Configuration
+- [ ] Credenciales SMTP configuradas (UI o .env)
 - [ ] Email de prueba se envía exitosamente
 - [ ] Email llega a bandeja (revisar SPAM)
+
+### Funcionalidad
+- [ ] Login funciona con usuarios iniciales
 - [ ] Notificación local aparece en 🔔
 - [ ] Email se envía cuando se aprueba/rechaza solicitud
 
