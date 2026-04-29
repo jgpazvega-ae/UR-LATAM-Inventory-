@@ -193,24 +193,31 @@ export const resetearPassword = async (req: AuthRequest, res: Response) => {
     }
 
     const { usuarioId } = req.params;
-    const defaultPassword = (() => {
-      const chars = ['l', 'a', 't', 'a', 'm', 'r', 'u', 'l', 'e', 's', '1', '2', '3'];
-      return chars.join('');
-    })();
-
     const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
+
     if (!usuario) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    const passwordHash = await bcrypt.hash(defaultPassword, 12);
+    // Generate temporary password (12 random characters)
+    const tempPassword = Math.random().toString(36).substring(2, 14);
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+
     await prisma.usuario.update({
       where: { id: usuarioId },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        forcePasswordReset: true,
+      },
     });
 
-    return res.json({ mensaje: `Contraseña de ${usuario.nombreCompleto} ha sido reseteada a la contraseña por defecto` });
-  } catch {
+    return res.json({
+      mensaje: `Contraseña reseteada para ${usuario.nombreCompleto}`,
+      tempPassword,
+      instrucciones: 'Comparte esta contraseña temporal con el usuario. Deberá cambiarla al siguiente login.',
+    });
+  } catch (error) {
+    console.error('Error reseteando contraseña:', error);
     return res.status(500).json({ error: 'Error al resetear contraseña' });
   }
 };
