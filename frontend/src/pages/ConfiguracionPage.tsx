@@ -6,7 +6,15 @@ import { useNotification } from '../contexts/NotificationContext'
 export default function ConfiguracionPage() {
   const { isAdmin } = useAuth()
   const { addNotification } = useNotification()
-  const [config, setConfig] = useState<any>(null)
+  const [config, setConfig] = useState<any>({
+    diasMinimosAnticipacion: 5,
+    diasVencimientoAlerta: 7,
+    correoAdminPrincipal: '',
+    correoAdminCopia1: '',
+    correoAdminCopia2: '',
+    horariosArr: ['08:00', '12:00', '16:00'],
+    estadoSistema: 'ACTIVO',
+  })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -14,34 +22,52 @@ export default function ConfiguracionPage() {
     const cargar = async () => {
       try {
         const c = await configuracionService.obtener()
-        let horarios = ['08:00', '12:00', '16:00']
-        try {
-          if (c.horariosNotificacion) {
-            horarios = Array.isArray(c.horariosNotificacion)
-              ? c.horariosNotificacion
-              : JSON.parse(c.horariosNotificacion)
-          }
-        } catch {}
-        setConfig({ ...c, horariosArr: horarios })
+        const horariosArr = Array.isArray(c.horariosNotificacion)
+          ? c.horariosNotificacion
+          : Array.isArray(c.horariosArr)
+            ? c.horariosArr
+            : ['08:00', '12:00', '16:00']
+
+        setConfig({
+          diasMinimosAnticipacion: c.diasMinimosAnticipacion || 5,
+          diasVencimientoAlerta: c.diasVencimientoAlerta || 7,
+          correoAdminPrincipal: c.correoAdminPrincipal || '',
+          correoAdminCopia1: c.correoAdminCopia1 || '',
+          correoAdminCopia2: c.correoAdminCopia2 || '',
+          horariosArr,
+          estadoSistema: c.estadoSistema || 'ACTIVO',
+        })
       } catch (err) {
+        console.error('Error cargando configuración:', err)
         addNotification('Error al cargar configuración', 'error')
       } finally {
         setLoading(false)
       }
     }
     cargar()
-  }, [addNotification])
+  }, [])
 
   const guardar = async () => {
+    if (!config.horariosArr || config.horariosArr.length === 0) {
+      addNotification('Debe tener al menos un horario de notificación', 'error')
+      return
+    }
+
     setSaving(true)
     try {
-      const { horariosArr, ...rest } = config
-      await configuracionService.actualizar({
-        ...rest,
-        horariosNotificacion: horariosArr,
-      })
+      const configToSave = {
+        diasMinimosAnticipacion: config.diasMinimosAnticipacion,
+        diasVencimientoAlerta: config.diasVencimientoAlerta,
+        correoAdminPrincipal: config.correoAdminPrincipal,
+        correoAdminCopia1: config.correoAdminCopia1,
+        correoAdminCopia2: config.correoAdminCopia2,
+        horariosNotificacion: config.horariosArr,
+        estadoSistema: config.estadoSistema,
+      }
+      await configuracionService.actualizar(configToSave)
       addNotification('Configuración guardada correctamente', 'success')
-    } catch {
+    } catch (err) {
+      console.error('Error guardando:', err)
       addNotification('Error al guardar configuración', 'error')
     } finally {
       setSaving(false)
@@ -57,7 +83,6 @@ export default function ConfiguracionPage() {
   }
 
   if (loading) return <div className="text-center py-8">Cargando...</div>
-  if (!config) return <div className="text-center py-8">No hay configuración disponible</div>
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
