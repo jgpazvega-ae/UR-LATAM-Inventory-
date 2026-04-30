@@ -44,7 +44,20 @@ class RobotServiceLocal {
   private getRobots(): Robot[] {
     const stored = localStorage.getItem(this.robotsKey);
     if (stored) {
-      return JSON.parse(stored);
+      try {
+        const parsed = JSON.parse(stored);
+        // Validar que los robots tengan región, si no, reinicializar
+        if (parsed.length > 0 && !parsed[0].region) {
+          localStorage.removeItem(this.robotsKey);
+          localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
+          return ROBOTS_INICIALES;
+        }
+        return parsed;
+      } catch {
+        localStorage.removeItem(this.robotsKey);
+        localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
+        return ROBOTS_INICIALES;
+      }
     }
     localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
     return ROBOTS_INICIALES;
@@ -53,7 +66,13 @@ class RobotServiceLocal {
   private getFamilias(): Familia[] {
     const stored = localStorage.getItem(this.familiasKey);
     if (stored) {
-      return JSON.parse(stored);
+      try {
+        return JSON.parse(stored);
+      } catch {
+        localStorage.removeItem(this.familiasKey);
+        localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
+        return FAMILIAS_INICIALES;
+      }
     }
     localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
     return FAMILIAS_INICIALES;

@@ -33,10 +33,17 @@ export default function RobotsPage() {
       }
       if (filtroFamilia) filtros.familiaId = filtroFamilia
       if (filtroEstado) filtros.estado = filtroEstado
+
+      console.log('Cargando robots con filtros:', filtros)
+
       const [rs, fs] = await Promise.all([
         robotService.listar(filtros),
         robotService.listarFamilias(),
       ])
+
+      console.log('Robots cargados:', rs.length, rs)
+      console.log('Familias cargadas:', fs)
+
       setRobots(rs)
       setFamilias(fs)
     } catch (err) {
