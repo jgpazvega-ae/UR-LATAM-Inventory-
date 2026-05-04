@@ -83,14 +83,17 @@ class RobotServiceLocal {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        // Validar que los robots tengan región, si no, reinicializar
-        if (parsed.length > 0 && !parsed[0].region) {
+        // Validar que los robots tengan región Y que haya cantidad suficiente
+        // Si hay menos de 40 robots o no tienen región, reinicializar
+        if (parsed.length > 0 && (!parsed[0].region || parsed.length < 40)) {
+          console.log('🔄 Reinicializando robots - datos incompletos detectados');
           localStorage.removeItem(this.robotsKey);
           localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
           return ROBOTS_INICIALES;
         }
         return parsed;
-      } catch {
+      } catch (err) {
+        console.log('🔄 Error parseando robots - reinicializando');
         localStorage.removeItem(this.robotsKey);
         localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
         return ROBOTS_INICIALES;
