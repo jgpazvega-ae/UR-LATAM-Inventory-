@@ -27,14 +27,14 @@ const ROBOTS_INICIALES: Robot[] = [
   { id: '2', numeroSerie: '2017304770', modelo: 'UR10', familiaId: '1', estado: 'DISPONIBLE', region: 'MX' },
   { id: '3', numeroSerie: '20205000857', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'MX' },
   { id: '4', numeroSerie: '20185000448', modelo: 'UR10e', familiaId: '2', estado: 'EN_PRESTAMO', region: 'MX' },
-  { id: '5', numeroSerie: '20205000065', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'BR' },
-  { id: '6', numeroSerie: '20195000435', modelo: 'UR10e', familiaId: '2', estado: 'MANTENIMIENTO', region: 'BR' },
-  { id: '7', numeroSerie: '20195000437', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'BR' },
-  { id: '8', numeroSerie: '20245201849', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'BR' },
-  { id: '9', numeroSerie: '20245201848', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'USA' },
-  { id: '10', numeroSerie: '20195600044', modelo: 'UR16e', familiaId: '2', estado: 'DISPONIBLE', region: 'USA' },
-  { id: '11', numeroSerie: '20195600055', modelo: 'UR16e', familiaId: '2', estado: 'DISPONIBLE', region: 'USA' },
-  { id: '12', numeroSerie: '20236800042', modelo: 'UR20', familiaId: '3', estado: 'DISPONIBLE', region: 'USA' },
+  { id: '5', numeroSerie: '20205000065', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'MX' },
+  { id: '6', numeroSerie: '20195000435', modelo: 'UR10e', familiaId: '2', estado: 'MANTENIMIENTO', region: 'MX' },
+  { id: '7', numeroSerie: '20195000437', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'MX' },
+  { id: '8', numeroSerie: '20245201849', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'MX' },
+  { id: '9', numeroSerie: '20245201848', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'MX' },
+  { id: '10', numeroSerie: '20195600044', modelo: 'UR16e', familiaId: '2', estado: 'DISPONIBLE', region: 'MX' },
+  { id: '11', numeroSerie: '20195600055', modelo: 'UR16e', familiaId: '2', estado: 'DISPONIBLE', region: 'MX' },
+  { id: '12', numeroSerie: '20236800042', modelo: 'UR20', familiaId: '3', estado: 'DISPONIBLE', region: 'MX' },
 ];
 
 class RobotServiceLocal {
