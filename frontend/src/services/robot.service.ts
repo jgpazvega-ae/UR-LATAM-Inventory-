@@ -201,7 +201,16 @@ class RobotServiceLocal {
   async listarFamilias() {
     try {
       const familias = this.getFamilias();
-      console.log('👨‍👩‍👧‍👦 Familias cargadas:', familias.length);
+      console.log('👨‍👩‍👧‍👦 Familias cargadas:', familias.length, familias);
+
+      if (!familias || familias.length === 0) {
+        console.warn('⚠️ ALERTA: getFamilias() devolvió array vacío, reinicializando...');
+        localStorage.removeItem(this.familiasKey);
+        const reinit = this.getFamilias();
+        console.log('👨‍👩‍👧‍👦 Familias reininicializadas:', reinit.length, reinit);
+        return reinit;
+      }
+
       return familias;
     } catch (error) {
       console.error('❌ Error en listarFamilias():', error);

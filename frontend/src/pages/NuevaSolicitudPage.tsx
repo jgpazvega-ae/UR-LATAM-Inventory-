@@ -35,23 +35,39 @@ export default function NuevaSolicitudPage() {
   useEffect(() => {
     const cargar = async () => {
       try {
+        console.log('📋 Cargando datos para nueva solicitud...');
+
         const [fams, dists, config, solicitudes] = await Promise.all([
           robotService.listarFamilias(),
           userService.listarDistribuidores(),
           configuracionService.obtener(),
           prestamoService.listar({ estado: 'ACTIVO', usuario: 'mias' }),
         ])
-        setFamilias(fams)
-        setDistribuidores(dists)
+
+        console.log('✅ Familias cargadas:', fams?.length || 0, fams);
+        console.log('✅ Distribuidores cargados:', dists?.length || 0);
+        console.log('✅ Configuración:', config);
+        console.log('✅ Solicitudes:', solicitudes?.length || 0);
+
+        if (!fams || fams.length === 0) {
+          console.warn('⚠️ ALERTA: No hay familias disponibles');
+          setError('No hay familias de robots. Contacta al administrador.');
+        }
+
+        setFamilias(fams || [])
+        setDistribuidores(dists || [])
         if (config?.diasMinimosAnticipacion) setDiasMin(config.diasMinimosAnticipacion)
 
         // Verificar si hay un préstamo activo sin confirmar recepción
-        const prestamoSinRecepcion = solicitudes.find((s: any) => !s.estadoRecepcion)
-        if (prestamoSinRecepcion) {
-          setPrestamoActivo(prestamoSinRecepcion)
+        if (solicitudes && solicitudes.length > 0) {
+          const prestamoSinRecepcion = solicitudes.find((s: any) => !s.estadoRecepcion)
+          if (prestamoSinRecepcion) {
+            setPrestamoActivo(prestamoSinRecepcion)
+          }
         }
       } catch (err) {
-        console.error(err)
+        console.error('❌ Error cargando datos:', err);
+        setError(`Error: ${(err as any).message || 'Error desconocido'}`);
       }
     }
     cargar()
