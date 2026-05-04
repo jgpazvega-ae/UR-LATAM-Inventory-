@@ -127,25 +127,40 @@ class RobotServiceLocal {
   }
 
   async listar(filtros: any = {}) {
-    let robots = this.getRobots();
-    const familias = this.getFamilias();
+    try {
+      let robots = this.getRobots();
+      const familias = this.getFamilias();
 
-    if (filtros.region) {
-      robots = robots.filter(r => r.region === filtros.region);
+      console.log('📦 Total robots en BD:', robots.length);
+      console.log('📦 Filtros:', filtros);
+
+      if (filtros.region) {
+        const before = robots.length;
+        robots = robots.filter(r => r.region === filtros.region);
+        console.log(`📦 Robots con región ${filtros.region}: ${robots.length} (antes: ${before})`);
+      }
+
+      if (filtros.familiaId) {
+        robots = robots.filter(r => r.familiaId === filtros.familiaId);
+        console.log(`📦 Robots con familiaId ${filtros.familiaId}: ${robots.length}`);
+      }
+
+      if (filtros.estado) {
+        robots = robots.filter(r => r.estado === filtros.estado);
+        console.log(`📦 Robots con estado ${filtros.estado}: ${robots.length}`);
+      }
+
+      const resultado = robots.map(r => ({
+        ...r,
+        familia: familias.find(f => f.id === r.familiaId) || null,
+      }));
+
+      console.log('✅ Robots finales retornados:', resultado.length);
+      return resultado;
+    } catch (error) {
+      console.error('❌ Error en listar():', error);
+      throw error;
     }
-
-    if (filtros.familiaId) {
-      robots = robots.filter(r => r.familiaId === filtros.familiaId);
-    }
-
-    if (filtros.estado) {
-      robots = robots.filter(r => r.estado === filtros.estado);
-    }
-
-    return robots.map(r => ({
-      ...r,
-      familia: familias.find(f => f.id === r.familiaId) || null,
-    }));
   }
 
   async obtener(id: string) {
@@ -178,7 +193,14 @@ class RobotServiceLocal {
   }
 
   async listarFamilias() {
-    return this.getFamilias();
+    try {
+      const familias = this.getFamilias();
+      console.log('👨‍👩‍👧‍👦 Familias cargadas:', familias.length);
+      return familias;
+    } catch (error) {
+      console.error('❌ Error en listarFamilias():', error);
+      throw error;
+    }
   }
 
   async crearFamilia(data: Omit<Familia, 'id'>) {
