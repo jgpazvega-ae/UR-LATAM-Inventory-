@@ -150,6 +150,12 @@ class RobotServiceLocal {
         console.log(`📦 Robots con estado ${filtros.estado}: ${robots.length}`);
       }
 
+      // Filtro de disponibles - solo DISPONIBLE
+      if (filtros.disponibles === true) {
+        robots = robots.filter(r => r.estado === 'DISPONIBLE');
+        console.log(`📦 Robots disponibles: ${robots.length}`);
+      }
+
       const resultado = robots.map(r => ({
         ...r,
         familia: familias.find(f => f.id === r.familiaId) || null,
