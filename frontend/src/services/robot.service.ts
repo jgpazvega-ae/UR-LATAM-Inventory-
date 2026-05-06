@@ -87,19 +87,24 @@ class RobotServiceLocal {
         // Si hay menos de 40 robots o no tienen región, reinicializar
         if (parsed.length > 0 && (!parsed[0].region || parsed.length < 40)) {
           console.log('🔄 Reinicializando robots - datos incompletos detectados');
+          console.log(`   - Robots antes: ${parsed.length}, First robot region: ${parsed[0]?.region}`);
           localStorage.removeItem(this.robotsKey);
           localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
+          console.log('✅ Robots reininicializados - Total:', ROBOTS_INICIALES.length);
           return ROBOTS_INICIALES;
         }
+        console.log(`📥 Robots cargados desde localStorage: ${parsed.length} robots`);
         return parsed;
       } catch (err) {
-        console.log('🔄 Error parseando robots - reinicializando');
+        console.log('🔄 Error parseando robots - reinicializando:', (err as any).message);
         localStorage.removeItem(this.robotsKey);
         localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
         return ROBOTS_INICIALES;
       }
     }
+    console.log('📥 Robots NO encontrados en localStorage - inicializando con ROBOTS_INICIALES...');
     localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
+    console.log('✅ ROBOTS_INICIALES almacenados - Total:', ROBOTS_INICIALES.length);
     return ROBOTS_INICIALES;
   }
 
@@ -111,19 +116,24 @@ class RobotServiceLocal {
         // Validar que tenga las familias esperadas (4 familias)
         if (!Array.isArray(parsed) || parsed.length !== 4 || !parsed[0]?.nombreFamilia) {
           console.log('🔄 Reinicializando familias - datos incompletos o dañados');
+          console.log(`   - Es array: ${Array.isArray(parsed)}, Largo: ${parsed?.length}, Tiene nombreFamilia: ${parsed?.[0]?.nombreFamilia ? 'sí' : 'no'}`);
           localStorage.removeItem(this.familiasKey);
           localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
+          console.log('✅ Familias reininicializadas - Total:', FAMILIAS_INICIALES.length);
           return FAMILIAS_INICIALES;
         }
+        console.log(`📥 Familias cargadas desde localStorage: ${parsed.length} familias`);
         return parsed;
       } catch (err) {
-        console.log('🔄 Error parseando familias - reinicializando');
+        console.log('🔄 Error parseando familias - reinicializando:', (err as any).message);
         localStorage.removeItem(this.familiasKey);
         localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
         return FAMILIAS_INICIALES;
       }
     }
+    console.log('📥 Familias NO encontradas en localStorage - inicializando con FAMILIAS_INICIALES...');
     localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
+    console.log('✅ FAMILIAS_INICIALES almacenadas - Total:', FAMILIAS_INICIALES.length);
     return FAMILIAS_INICIALES;
   }
 
