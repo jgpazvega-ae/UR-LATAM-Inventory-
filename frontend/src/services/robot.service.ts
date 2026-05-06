@@ -107,8 +107,17 @@ class RobotServiceLocal {
     const stored = localStorage.getItem(this.familiasKey);
     if (stored) {
       try {
-        return JSON.parse(stored);
-      } catch {
+        const parsed = JSON.parse(stored);
+        // Validar que tenga las familias esperadas (4 familias)
+        if (!Array.isArray(parsed) || parsed.length !== 4 || !parsed[0]?.nombreFamilia) {
+          console.log('🔄 Reinicializando familias - datos incompletos o dañados');
+          localStorage.removeItem(this.familiasKey);
+          localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
+          return FAMILIAS_INICIALES;
+        }
+        return parsed;
+      } catch (err) {
+        console.log('🔄 Error parseando familias - reinicializando');
         localStorage.removeItem(this.familiasKey);
         localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
         return FAMILIAS_INICIALES;
@@ -204,6 +213,7 @@ class RobotServiceLocal {
       const robots = this.getRobots();
 
       console.log('👨‍👩‍👧‍👦 Familias cargadas:', familias.length, familias);
+      console.log('🤖 Robots totales disponibles:', robots.length);
 
       if (!familias || familias.length === 0) {
         console.warn('⚠️ ALERTA: getFamilias() devolvió array vacío, reinicializando...');
@@ -219,12 +229,19 @@ class RobotServiceLocal {
       }
 
       // Agregar conteo de robots a cada familia
-      return familias.map(f => ({
-        ...f,
-        _count: {
-          robots: robots.filter(r => r.familiaId === f.id).length,
-        },
-      }));
+      const familiasConConteo = familias.map(f => {
+        const count = robots.filter(r => r.familiaId === f.id).length;
+        console.log(`📊 Familia "${f.nombreFamilia}" (id: ${f.id}): ${count} robots`);
+        return {
+          ...f,
+          _count: {
+            robots: count,
+          },
+        };
+      });
+
+      console.log('✅ Familias con conteo enriquecidas:', familiasConConteo);
+      return familiasConConteo;
     } catch (error) {
       console.error('❌ Error en listarFamilias():', error);
       throw error;
