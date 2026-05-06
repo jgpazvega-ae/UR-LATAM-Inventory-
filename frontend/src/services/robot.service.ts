@@ -210,11 +210,14 @@ class RobotServiceLocal {
 
   async listarFamilias() {
     try {
+      // Ensure robots are initialized
+      this.getRobots();
       const familias = this.getFamilias();
       const robots = this.getRobots();
 
       console.log('👨‍👩‍👧‍👦 Familias cargadas:', familias.length, familias);
       console.log('🤖 Robots totales disponibles:', robots.length);
+      console.log('🤖 Estructura de primer robot:', robots[0]);
 
       if (!familias || familias.length === 0) {
         console.warn('⚠️ ALERTA: getFamilias() devolvió array vacío, reinicializando...');
@@ -231,8 +234,14 @@ class RobotServiceLocal {
 
       // Agregar conteo de robots a cada familia
       const familiasConConteo = familias.map(f => {
-        const count = robots.filter(r => r.familiaId === f.id).length;
-        console.log(`📊 Familia "${f.nombreFamilia}" (id: ${f.id}): ${count} robots`);
+        const matchingRobots = robots.filter(r => r.familiaId === f.id);
+        const count = matchingRobots.length;
+        console.log(`📊 Familia "${f.nombreFamilia}" (id: ${f.id})`);
+        console.log(`   - Robots encontrados: ${count}`);
+        if (matchingRobots.length > 0) {
+          console.log(`   - Ejemplos: ${matchingRobots.slice(0, 2).map(r => r.numeroSerie).join(', ')}`);
+        }
+        console.log(`   - Primeros 3 familiaIds en robots: ${robots.slice(0, 3).map(r => r.familiaId).join(', ')}`);
         return {
           ...f,
           _count: {
