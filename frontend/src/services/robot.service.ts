@@ -227,7 +227,18 @@ class RobotServiceLocal {
 
       console.log('👨‍👩‍👧‍👦 Familias cargadas:', familias.length, familias);
       console.log('🤖 Robots totales disponibles:', robots.length);
+
+      // Validar integridad de datos
+      if (robots.length === 0) {
+        console.error('❌ ERROR CRITICO: No hay robots cargados');
+      }
+      if (familias.length === 0) {
+        console.error('❌ ERROR CRITICO: No hay familias cargadas');
+      }
+
       console.log('🤖 Estructura de primer robot:', robots[0]);
+      console.log('🤖 familiaIds únicos en robots:', [...new Set(robots.map(r => r.familiaId))]);
+      console.log('👨‍👩‍👧‍👦 IDs de familias:', familias.map(f => f.id));
 
       if (!familias || familias.length === 0) {
         console.warn('⚠️ ALERTA: getFamilias() devolvió array vacío, reinicializando...');
