@@ -234,14 +234,19 @@ class RobotServiceLocal {
 
       // Agregar conteo de robots a cada familia
       const familiasConConteo = familias.map(f => {
-        const matchingRobots = robots.filter(r => r.familiaId === f.id);
+        const matchingRobots = robots.filter(r => {
+          const match = r.familiaId === f.id || String(r.familiaId) === String(f.id);
+          return match;
+        });
         const count = matchingRobots.length;
-        console.log(`📊 Familia "${f.nombreFamilia}" (id: ${f.id})`);
+        console.log(`📊 Familia "${f.nombreFamilia}"`);
+        console.log(`   - familiaId tipo: "${typeof f.id}" valor: "${f.id}"`);
         console.log(`   - Robots encontrados: ${count}`);
-        if (matchingRobots.length > 0) {
+        if (count === 0 && robots.length > 0) {
+          console.log(`   - ALERTA: No se encontraron robots. Tipos familiaId: ${robots.slice(0, 2).map(r => `${typeof r.familiaId}:${r.familiaId}`).join(', ')}`);
+        } else if (matchingRobots.length > 0) {
           console.log(`   - Ejemplos: ${matchingRobots.slice(0, 2).map(r => r.numeroSerie).join(', ')}`);
         }
-        console.log(`   - Primeros 3 familiaIds en robots: ${robots.slice(0, 3).map(r => r.familiaId).join(', ')}`);
         return {
           ...f,
           _count: {
