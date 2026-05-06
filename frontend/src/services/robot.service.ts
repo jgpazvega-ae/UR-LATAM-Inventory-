@@ -201,6 +201,8 @@ class RobotServiceLocal {
   async listarFamilias() {
     try {
       const familias = this.getFamilias();
+      const robots = this.getRobots();
+
       console.log('👨‍👩‍👧‍👦 Familias cargadas:', familias.length, familias);
 
       if (!familias || familias.length === 0) {
@@ -208,10 +210,21 @@ class RobotServiceLocal {
         localStorage.removeItem(this.familiasKey);
         const reinit = this.getFamilias();
         console.log('👨‍👩‍👧‍👦 Familias reininicializadas:', reinit.length, reinit);
-        return reinit;
+        return reinit.map(f => ({
+          ...f,
+          _count: {
+            robots: robots.filter(r => r.familiaId === f.id).length,
+          },
+        }));
       }
 
-      return familias;
+      // Agregar conteo de robots a cada familia
+      return familias.map(f => ({
+        ...f,
+        _count: {
+          robots: robots.filter(r => r.familiaId === f.id).length,
+        },
+      }));
     } catch (error) {
       console.error('❌ Error en listarFamilias():', error);
       throw error;
