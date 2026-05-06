@@ -141,7 +141,8 @@ class RobotServiceLocal {
       const familias = this.getFamilias();
 
       console.log('📦 Total robots en BD:', robots.length);
-      console.log('📦 Filtros:', filtros);
+      console.log('📦 Filtros aplicados:', filtros);
+      console.log('📦 Primeros robots antes de filtros:', robots.slice(0, 2));
 
       if (filtros.region) {
         const before = robots.length;

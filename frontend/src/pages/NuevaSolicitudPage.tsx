@@ -4,11 +4,13 @@ import { robotService } from '../services/robot.service'
 import { userService } from '../services/user.service'
 import { prestamoService } from '../services/prestamo.service'
 import { configuracionService } from '../services/configuracion.service'
+import { useRegionLanguage } from '../contexts/RegionLanguageContext'
 
 const PASOS = ['Familia', 'Robots', 'Fechas', 'Distribuidor', 'Motivo', 'Confirmar']
 
 export default function NuevaSolicitudPage() {
   const navigate = useNavigate()
+  const { currentRegion } = useRegionLanguage()
   const [paso, setPaso] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -75,9 +77,9 @@ export default function NuevaSolicitudPage() {
 
   useEffect(() => {
     if (familiaId) {
-      robotService.listar({ familiaId, disponibles: true }).then(setRobots)
+      robotService.listar({ familiaId, disponibles: true, region: currentRegion }).then(setRobots)
     }
-  }, [familiaId])
+  }, [familiaId, currentRegion])
 
   const toggleRobot = (robot: any) => {
     if (robotsSeleccionados.find(r => r.id === robot.id)) {
