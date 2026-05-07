@@ -292,6 +292,11 @@ class RobotServiceLocal {
     this.saveFamilias(familias);
     return nuevaFamilia;
   }
+
+  // Método público para obtener robots (usado por otras páginas)
+  async obtenerTodosLosRobots() {
+    return this.getRobots();
+  }
 }
 
 export const robotService = new RobotServiceLocal();
