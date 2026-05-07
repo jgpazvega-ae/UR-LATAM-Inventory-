@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { jsPDF } from 'jspdf'
 import { robotService } from '../services/robot.service'
-import { userService } from '../services/user.service'
 import { prestamoService } from '../services/prestamo.service'
 import { configuracionService } from '../services/configuracion.service'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
 
-const PASOS = ['Familia', 'Robots', 'Fechas', 'Distribuidor', 'Motivo', 'Confirmar']
+const PASOS = ['Familia', 'Robots', 'Fechas', 'Motivo', 'PDF', 'Confirmar']
 
 export default function NuevaSolicitudPage() {
   const navigate = useNavigate()
@@ -19,7 +19,6 @@ export default function NuevaSolicitudPage() {
   // Datos del wizard
   const [familias, setFamilias] = useState<any[]>([])
   const [robots, setRobots] = useState<any[]>([])
-  const [distribuidores, setDistribuidores] = useState<any[]>([])
   const [diasMin, setDiasMin] = useState(7)
 
   // Selecciones
@@ -27,7 +26,6 @@ export default function NuevaSolicitudPage() {
   const [robotsSeleccionados, setRobotsSeleccionados] = useState<any[]>([])
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
-  const [distribuidorId, setDistribuidorId] = useState('')
   const [motivo, setMotivo] = useState('')
 
   const fechaMinima = new Date()
@@ -39,17 +37,15 @@ export default function NuevaSolicitudPage() {
       try {
         console.log('📋 Cargando datos para nueva solicitud...');
 
-        const [fams, dists, config, solicitudes] = await Promise.all([
+        const [fams, config, solicitudes] = await Promise.all([
           robotService.listarFamilias(),
-          userService.listarDistribuidores(),
           configuracionService.obtener(),
           prestamoService.listar({ estado: 'ACTIVO', usuario: 'mias' }),
         ])
 
         console.log('✅ Familias cargadas:', fams?.length || 0, fams);
-        console.log('✅ Distribuidores cargados:', dists?.length || 0);
         console.log('✅ Configuración:', config);
-        console.log('✅ Solicitudes:', solicitudes?.length || 0);
+        console.log('✅ Solicitudes activas:', solicitudes?.length || 0);
 
         if (!fams || fams.length === 0) {
           console.warn('⚠️ ALERTA: No hay familias disponibles');
@@ -57,7 +53,6 @@ export default function NuevaSolicitudPage() {
         }
 
         setFamilias(fams || [])
-        setDistribuidores(dists || [])
         if (config?.diasMinimosAnticipacion) setDiasMin(config.diasMinimosAnticipacion)
 
         // Verificar si hay un préstamo activo sin confirmar recepción
@@ -94,8 +89,8 @@ export default function NuevaSolicitudPage() {
       case 0: return !!familiaId
       case 1: return robotsSeleccionados.length > 0
       case 2: return !!fechaInicio && !!fechaFin && new Date(fechaInicio) >= fechaMinima && new Date(fechaFin) > new Date(fechaInicio)
-      case 3: return !!distribuidorId
-      case 4: return motivo.length >= 10
+      case 3: return motivo.length >= 10
+      case 4: return true // PDF review, siempre puede avanzar
       default: return true
     }
   }
@@ -104,16 +99,20 @@ export default function NuevaSolicitudPage() {
     setLoading(true)
     setError('')
     try {
-      await prestamoService.crear({
+      const solicitud = await prestamoService.crear({
         robotIds: robotsSeleccionados.map(r => r.id),
-        distribuidorId,
         fechaInicio,
         fechaFin,
         motivo,
       })
-      navigate('/solicitudes')
+      console.log('✅ Solicitud creada:', solicitud);
+      // Mostrar mensaje de éxito y redirigir
+      setTimeout(() => {
+        navigate('/solicitudes')
+      }, 1000)
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al crear solicitud')
+      console.error('❌ Error al crear solicitud:', err);
+      setError(err.message || 'Error al crear solicitud')
     } finally {
       setLoading(false)
     }
@@ -122,6 +121,67 @@ export default function NuevaSolicitudPage() {
   const diasDuracion = fechaInicio && fechaFin
     ? Math.ceil((new Date(fechaFin).getTime() - new Date(fechaInicio).getTime()) / (1000 * 60 * 60 * 24))
     : 0
+
+  const descargarPDF = () => {
+    try {
+      const doc = new jsPDF()
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
+      let yPosition = 20
+
+      // Header
+      doc.setFontSize(20)
+      doc.text('SOLICITUD DE PRÉSTAMO DE ROBOTS', pageWidth / 2, yPosition, { align: 'center' })
+
+      yPosition += 15
+      doc.setFontSize(10)
+      doc.setTextColor(100)
+      const fecha = new Date()
+      doc.text(`Fecha: ${fecha.toLocaleDateString('es-ES')} - ${fecha.toLocaleTimeString('es-ES')}`, pageWidth / 2, yPosition, { align: 'center' })
+
+      yPosition += 15
+      doc.setTextColor(0)
+      doc.setFontSize(12)
+      doc.text('DETALLES DE LA SOLICITUD', 15, yPosition)
+
+      yPosition += 10
+      doc.setFontSize(10)
+      doc.text(`Número de Robots: ${robotsSeleccionados.length}`, 15, yPosition)
+      yPosition += 7
+
+      // Robots
+      doc.text('Robots Solicitados:', 15, yPosition)
+      yPosition += 5
+      doc.setFontSize(9)
+      robotsSeleccionados.forEach(r => {
+        if (yPosition > pageHeight - 20) {
+          doc.addPage()
+          yPosition = 20
+        }
+        doc.text(`• ${r.numeroSerie} (${r.modelo})`, 20, yPosition)
+        yPosition += 5
+      })
+
+      yPosition += 3
+      doc.setFontSize(10)
+      doc.text(`Período: ${new Date(fechaInicio).toLocaleDateString('es-ES')} al ${new Date(fechaFin).toLocaleDateString('es-ES')} (${diasDuracion} días)`, 15, yPosition)
+      yPosition += 7
+
+      doc.text(`Motivo: ${motivo}`, 15, yPosition)
+      yPosition += 10
+
+      // Footer
+      doc.setFontSize(9)
+      doc.setTextColor(150)
+      doc.text('Este documento es generado automáticamente por el Sistema de Control de Inventarios de Teradyne Robotics', 15, pageHeight - 10)
+
+      // Descargar
+      doc.save(`Solicitud-Prestamo-${fecha.getTime()}.pdf`)
+      console.log('✅ PDF descargado exitosamente')
+    } catch (err) {
+      console.error('❌ Error generando PDF:', err)
+    }
+  }
 
   if (prestamoActivo) {
     return (
@@ -302,29 +362,6 @@ export default function NuevaSolicitudPage() {
 
           {paso === 3 && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">Distribuidor</h2>
-              <div className="space-y-2">
-                {distribuidores.map((d: any) => (
-                  <button
-                    key={d.id}
-                    onClick={() => setDistribuidorId(d.id)}
-                    className={`w-full p-3 border-2 rounded-lg text-left transition ${
-                      distribuidorId === d.id ? 'border-teradyne-secondary bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="font-semibold">{d.nombre}</div>
-                    {d.contactoPrincipal && <div className="text-sm text-gray-500">{d.contactoPrincipal}</div>}
-                  </button>
-                ))}
-                {distribuidores.length === 0 && (
-                  <div className="text-center text-gray-500 py-8">No hay distribuidores</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {paso === 4 && (
-            <div>
               <h2 className="text-xl font-semibold mb-4">Motivo de la solicitud</h2>
               <p className="text-sm text-gray-600 mb-4">Describe el propósito del préstamo (mínimo 10 caracteres)</p>
               <textarea
@@ -341,28 +378,53 @@ export default function NuevaSolicitudPage() {
             </div>
           )}
 
+          {paso === 4 && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">📄 Descargar PDF</h2>
+              <p className="text-sm text-gray-600 mb-6">Tu solicitud está lista. Descarga el PDF para tener un registro de los detalles.</p>
+              <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg mb-6">
+                <div className="space-y-3">
+                  <div>
+                    <span className="font-semibold text-gray-700">Robots solicitados:</span>
+                    <p className="text-sm text-gray-600 mt-1">{robotsSeleccionados.length} robot(s)</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-700">Período:</span>
+                    <p className="text-sm text-gray-600 mt-1">{diasDuracion} días</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-700">Motivo:</span>
+                    <p className="text-sm text-gray-600 mt-1">{motivo}</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => descargarPDF()}
+                className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
+              >
+                📥 Descargar PDF de Solicitud
+              </button>
+            </div>
+          )}
+
           {paso === 5 && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">Revisión final</h2>
+              <h2 className="text-xl font-semibold mb-4">✅ Confirmar Solicitud</h2>
               <div className="space-y-4">
                 <div className="bg-gray-50 p-4 rounded">
                   <div className="text-xs font-semibold text-gray-500 mb-1">ROBOTS</div>
-                  <div>{robotsSeleccionados.map(r => `${r.numeroSerie} (${r.modelo || ''})`).join(', ')}</div>
+                  <div className="text-sm">{robotsSeleccionados.map(r => `${r.numeroSerie} (${r.modelo || ''})`).join(', ')}</div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded">
                   <div className="text-xs font-semibold text-gray-500 mb-1">PERÍODO</div>
-                  <div>{new Date(fechaInicio).toLocaleDateString('es-ES')} - {new Date(fechaFin).toLocaleDateString('es-ES')} ({diasDuracion} días)</div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">DISTRIBUIDOR</div>
-                  <div>{distribuidores.find(d => d.id === distribuidorId)?.nombre}</div>
+                  <div className="text-sm">{new Date(fechaInicio).toLocaleDateString('es-ES')} - {new Date(fechaFin).toLocaleDateString('es-ES')} ({diasDuracion} días)</div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded">
                   <div className="text-xs font-semibold text-gray-500 mb-1">MOTIVO</div>
-                  <div>{motivo}</div>
+                  <div className="text-sm">{motivo}</div>
                 </div>
-                <div className="bg-blue-50 border border-blue-200 p-4 rounded text-sm text-blue-900">
-                  ✉️ Al confirmar, se enviará notificación al gerente de ventas para aprobación.
+                <div className="bg-green-50 border border-green-200 p-4 rounded text-sm text-green-900">
+                  ✅ Tu solicitud será creada con los detalles anteriores. Puedes descargar el PDF antes de confirmar.
                 </div>
               </div>
             </div>

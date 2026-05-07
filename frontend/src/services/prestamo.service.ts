@@ -48,7 +48,7 @@ class PrestamoServiceLocal {
 
   async crear(solicitud: {
     robotIds: string[];
-    distribuidorId: string;
+    distribuidorId?: string;
     fechaInicio: string;
     fechaFin: string;
     motivo: string;
