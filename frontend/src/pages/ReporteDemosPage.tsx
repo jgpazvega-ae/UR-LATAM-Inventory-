@@ -1,21 +1,41 @@
 import { useEffect, useState } from 'react'
 import { prestamoService } from '../services/prestamo.service'
+import { robotService } from '../services/robot.service'
 
-const formatFecha = (fecha: string) =>
-  new Date(fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+const formatFecha = (fecha?: string) =>
+  fecha ? new Date(fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'
 
 export default function ReporteDemosPage() {
   const [demos, setDemos] = useState<any[]>([])
+  const [robots, setRobots] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     const cargar = async () => {
       try {
-        const data = await prestamoService.reporteDemosActivas()
-        setDemos(data || [])
+        console.log('📊 Cargando reporte de demos...')
+        const [data, robotsData] = await Promise.all([
+          prestamoService.reporteDemosActivas(),
+          robotService.obtenerTodosLosRobots(),
+        ])
+
+        const ahora = new Date()
+        const demosConCalculos = (data || []).map((d: any) => {
+          const fechaFin = new Date(d.fechaFin || d.fechaFinSolicitada || ahora)
+          const diasRestantes = Math.ceil((fechaFin.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24))
+          return {
+            ...d,
+            vigente: diasRestantes >= 0,
+            diasRestantes,
+          }
+        })
+
+        console.log('✅ Demos cargadas:', demosConCalculos.length)
+        setDemos(demosConCalculos)
+        setRobots(robotsData || [])
       } catch (err) {
-        console.error(err)
+        console.error('❌ Error cargando reporte:', err)
         setError('Error al cargar el reporte de demos')
       } finally {
         setLoading(false)
@@ -23,6 +43,13 @@ export default function ReporteDemosPage() {
     }
     cargar()
   }, [])
+
+  const getRobotsSeries = (robotIds: string[]) => {
+    if (!robotIds || robotIds.length === 0) return '-'
+    return robotIds
+      .map(id => robots.find(r => r.id === id)?.numeroSerie || id)
+      .join(', ')
+  }
 
   if (loading) return <div className="text-center py-8">Cargando reporte...</div>
 
@@ -56,9 +83,8 @@ export default function ReporteDemosPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Solicitud</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Solicitante</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Distribuidor</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Robots</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Motivo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Fecha Inicio</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Fecha Fin</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Estado</th>
@@ -66,30 +92,26 @@ export default function ReporteDemosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {demos.map((demo) => (
+                {demos.map((demo: any) => (
                   <tr key={demo.id} className={demo.vigente ? 'hover:bg-gray-50' : 'hover:bg-red-50 bg-red-50'}>
                     <td className="px-6 py-3 font-mono text-sm font-medium">
                       {demo.numeroSolicitud}
                     </td>
                     <td className="px-6 py-3 text-sm">
-                      <div className="font-medium">{demo.usuarioSolicitante.nombreCompleto}</div>
-                      <div className="text-xs text-gray-500">{demo.usuarioSolicitante.email}</div>
+                      <div className="max-w-xs text-xs">
+                        {getRobotsSeries(demo.robotIds)}
+                      </div>
                     </td>
-                    <td className="px-6 py-3 text-sm">{demo.distribuidor?.nombre || '-'}</td>
                     <td className="px-6 py-3 text-sm">
-                      <div className="max-w-xs">
-                        {demo.detalles.map((d: any) => (
-                          <div key={d.id} className="text-xs py-1">
-                            {d.robot.numeroSerie}
-                          </div>
-                        ))}
+                      <div className="max-w-xs truncate" title={demo.motivo}>
+                        {demo.motivo?.substring(0, 30)}...
                       </div>
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-600">
-                      {formatFecha(demo.fechaInioSolicitada)}
+                      {formatFecha(demo.fechaInicio || demo.fechaInioSolicitada)}
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-600">
-                      {formatFecha(demo.fechaFinSolicitada)}
+                      {formatFecha(demo.fechaFin || demo.fechaFinSolicitada)}
                     </td>
                     <td className="px-6 py-3">
                       <span className={`text-xs px-2 py-1 rounded font-medium ${
@@ -118,13 +140,13 @@ export default function ReporteDemosPage() {
               <div className="text-center">
                 <p className="text-sm text-gray-600">Vigentes</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {demos.filter((d) => d.vigente).length}
+                  {demos.filter((d: any) => d.vigente).length}
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">Vencidos</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {demos.filter((d) => !d.vigente).length}
+                  {demos.filter((d: any) => !d.vigente).length}
                 </p>
               </div>
               <div className="text-center">

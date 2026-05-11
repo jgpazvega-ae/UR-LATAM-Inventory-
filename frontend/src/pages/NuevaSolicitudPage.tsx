@@ -193,7 +193,7 @@ export default function NuevaSolicitudPage() {
           </p>
           <div className="bg-white rounded p-4 mb-4 border border-red-200">
             <p className="text-sm text-gray-700 mb-2"><strong>Solicitud Activa:</strong> {prestamoActivo.numeroSolicitud}</p>
-            <p className="text-sm text-gray-700 mb-2"><strong>Fecha de Retorno Teórico:</strong> {new Date(prestamoActivo.fechaFinSolicitada).toLocaleDateString('es-ES')}</p>
+            <p className="text-sm text-gray-700 mb-2"><strong>Fecha de Retorno Teórico:</strong> {prestamoActivo.fechaFin || prestamoActivo.fechaFinSolicitada ? new Date(prestamoActivo.fechaFin || prestamoActivo.fechaFinSolicitada).toLocaleDateString('es-ES') : 'N/A'}</p>
             <p className="text-sm text-gray-700"><strong>Estado:</strong> {prestamoActivo.estado}</p>
           </div>
           <p className="text-red-700 mb-6">
