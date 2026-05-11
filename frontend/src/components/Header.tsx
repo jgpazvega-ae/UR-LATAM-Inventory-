@@ -34,8 +34,8 @@ export default function Header() {
 
           <div className="border-l border-gray-200 pl-6">
             <div className="text-right">
-              <div className="text-sm font-medium text-gray-800">{user?.nombreCompleto}</div>
-              <div className="text-xs text-gray-500">{user?.rol.replace('_', ' ').toLowerCase()}</div>
+              <div className="text-sm font-medium text-gray-800">{user?.nombreCompleto || 'Usuario'}</div>
+              <div className="text-xs text-gray-500">{user?.rol?.replace('_', ' ')?.toLowerCase() || 'sin rol'}</div>
             </div>
           </div>
 
