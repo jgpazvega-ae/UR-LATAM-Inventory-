@@ -300,15 +300,24 @@ export default function SolicitudDetallePage() {
                 <div>
                   <p className="font-semibold text-gray-900">{solicitud.pdfAdjunto.name}</p>
                   <p className="text-xs text-gray-600">{(solicitud.pdfAdjunto.size / 1024).toFixed(2)} KB</p>
+                  {solicitud.pdfAdjunto.archivado && (
+                    <p className="text-xs text-orange-600 mt-1">📁 PDF archivado (préstamo completado)</p>
+                  )}
                 </div>
               </div>
-              <a
-                href={solicitud.pdfAdjunto.data}
-                download={solicitud.pdfAdjunto.name}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition"
-              >
-                📥 Descargar
-              </a>
+              {solicitud.pdfAdjunto.data ? (
+                <a
+                  href={solicitud.pdfAdjunto.data}
+                  download={solicitud.pdfAdjunto.name}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition"
+                >
+                  📥 Descargar
+                </a>
+              ) : (
+                <span className="px-4 py-2 bg-gray-200 text-gray-500 rounded text-sm font-medium">
+                  No disponible
+                </span>
+              )}
             </div>
           </div>
         )}

@@ -1,5 +1,34 @@
 const PRESTAMOS_INICIALES: any[] = [];
 
+// Detecta si un error es de cuota de localStorage
+const isQuotaError = (err: any): boolean => {
+  return (
+    err instanceof DOMException &&
+    (err.name === 'QuotaExceededError' ||
+      err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      err.code === 22 ||
+      err.code === 1014)
+  );
+};
+
+// Helper seguro para guardar en localStorage con manejo de cuota
+const safeSetItem = (key: string, value: string): { success: boolean; error?: string } => {
+  try {
+    localStorage.setItem(key, value);
+    return { success: true };
+  } catch (err: any) {
+    if (isQuotaError(err)) {
+      console.error('❌ Cuota de localStorage excedida');
+      return {
+        success: false,
+        error: 'Espacio de almacenamiento agotado. Se eliminarán PDFs antiguos para liberar espacio.',
+      };
+    }
+    console.error('❌ Error guardando en localStorage:', err);
+    return { success: false, error: err.message || 'Error desconocido al guardar' };
+  }
+};
+
 // Helper para actualizar estado de robots
 const actualizarEstadoRobots = (robotIds: string[], nuevoEstado: string) => {
   try {
@@ -23,24 +52,45 @@ const actualizarEstadoRobots = (robotIds: string[], nuevoEstado: string) => {
     let cambios = 0;
     robotIds.forEach((id: string) => {
       const robot = robots.find((r: any) => r && r.id === id);
-      if (robot && robot.estado !== undefined) {
+      if (robot) {
         const estadoAnterior = robot.estado;
         robot.estado = nuevoEstado;
         cambios++;
         console.log(`  ✓ Robot ${id}: ${estadoAnterior} → ${nuevoEstado}`);
       } else {
-        console.log(`  ⚠️ Robot ${id} no encontrado o estructura inválida`);
+        console.log(`  ⚠️ Robot ${id} no encontrado`);
       }
     });
 
     if (cambios > 0) {
-      localStorage.setItem('robots-demo', JSON.stringify(robots));
-      console.log(`🤖 ${cambios} robot(s) actualizados a ${nuevoEstado}`);
+      const result = safeSetItem('robots-demo', JSON.stringify(robots));
+      if (!result.success) {
+        console.error('❌ Error actualizando estado de robots:', result.error);
+      } else {
+        console.log(`🤖 ${cambios} robot(s) actualizados a ${nuevoEstado}`);
+      }
     }
   } catch (err) {
-    console.error('❌ Error actualizando robots:', err);
-    throw new Error(`Error al actualizar estado de robots: ${(err as any).message}`);
+    console.error('❌ Error en actualizarEstadoRobots:', err);
   }
+};
+
+// Limpia PDFs de préstamos completados para liberar espacio
+const limpiarPdfsAntiguos = (prestamos: any[]): any[] => {
+  return prestamos.map((p) => {
+    if ((p.estado === 'COMPLETADO' || p.estado === 'RECHAZADO') && p.pdfAdjunto) {
+      return {
+        ...p,
+        pdfAdjunto: {
+          name: p.pdfAdjunto.name,
+          size: p.pdfAdjunto.size,
+          data: null, // Eliminar el base64 grande
+          archivado: true,
+        },
+      };
+    }
+    return p;
+  });
 };
 
 class PrestamoServiceLocal {
@@ -60,8 +110,22 @@ class PrestamoServiceLocal {
     return PRESTAMOS_INICIALES;
   }
 
-  private savePrestamos(prestamos: any[]) {
-    localStorage.setItem(this.key, JSON.stringify(prestamos));
+  private savePrestamos(prestamos: any[]): { success: boolean; error?: string } {
+    const json = JSON.stringify(prestamos);
+    const result = safeSetItem(this.key, json);
+
+    // Si falla por cuota, intentar limpiar PDFs antiguos y reintentar
+    if (!result.success) {
+      console.log('🧹 Intentando liberar espacio eliminando PDFs antiguos...');
+      const prestamosLimpios = limpiarPdfsAntiguos(prestamos);
+      const retryResult = safeSetItem(this.key, JSON.stringify(prestamosLimpios));
+      if (retryResult.success) {
+        console.log('✅ Espacio liberado exitosamente');
+        return { success: true };
+      }
+      return retryResult;
+    }
+    return result;
   }
 
   async listar(filtros?: { estado?: string; usuario?: string; region?: string; usuarioId?: string }) {
@@ -119,7 +183,11 @@ class PrestamoServiceLocal {
     };
 
     prestamos.push(nuevoPrestamo);
-    this.savePrestamos(prestamos);
+    const result = this.savePrestamos(prestamos);
+
+    if (!result.success) {
+      throw new Error(result.error || 'No se pudo guardar la solicitud. Espacio insuficiente.');
+    }
 
     console.log('✅ Préstamo creado:', nuevoId);
     return nuevoPrestamo;
@@ -133,7 +201,11 @@ class PrestamoServiceLocal {
     prestamos[index].estado = 'APROBADO';
     prestamos[index].fechaAprobacion = new Date().toISOString();
     if (usuarioAprobador) prestamos[index].usuarioAprobador = usuarioAprobador;
-    this.savePrestamos(prestamos);
+
+    const result = this.savePrestamos(prestamos);
+    if (!result.success) {
+      throw new Error(result.error || 'No se pudo aprobar la solicitud');
+    }
     return prestamos[index];
   }
 
@@ -146,7 +218,11 @@ class PrestamoServiceLocal {
     prestamos[index].motivoRechazo = motivoRechazo;
     prestamos[index].fechaRechazo = new Date().toISOString();
     if (usuarioRechazo) prestamos[index].usuarioRechazo = usuarioRechazo;
-    this.savePrestamos(prestamos);
+
+    const result = this.savePrestamos(prestamos);
+    if (!result.success) {
+      throw new Error(result.error || 'No se pudo rechazar la solicitud');
+    }
     return prestamos[index];
   }
 
@@ -158,7 +234,11 @@ class PrestamoServiceLocal {
     prestamos[index].estado = 'ACTIVO';
     prestamos[index].fechaSalida = new Date().toISOString();
     if (usuarioSalida) prestamos[index].usuarioSalida = usuarioSalida;
-    this.savePrestamos(prestamos);
+
+    const result = this.savePrestamos(prestamos);
+    if (!result.success) {
+      throw new Error(result.error || 'No se pudo confirmar la salida');
+    }
 
     // Actualizar robots a EN_PRESTAMO
     actualizarEstadoRobots(prestamos[index].robotIds || [], 'EN_PRESTAMO');
@@ -167,25 +247,59 @@ class PrestamoServiceLocal {
   }
 
   async confirmarRecepcion(id: string, usuarioRecepcion?: { id: string; nombreCompleto: string }) {
-    const prestamos = this.getPrestamos();
-    const index = prestamos.findIndex(p => p.id === id);
-    if (index === -1) throw new Error('Préstamo no encontrado');
+    try {
+      const prestamos = this.getPrestamos();
+      const index = prestamos.findIndex(p => p.id === id);
+      if (index === -1) throw new Error('Préstamo no encontrado');
 
-    prestamos[index].estado = 'COMPLETADO';
-    prestamos[index].estadoRecepcion = 'CONFIRMADA';
-    prestamos[index].fechaRecepcion = new Date().toISOString();
-    if (usuarioRecepcion) prestamos[index].usuarioRecepcion = usuarioRecepcion;
-    this.savePrestamos(prestamos);
+      prestamos[index].estado = 'COMPLETADO';
+      prestamos[index].estadoRecepcion = 'CONFIRMADA';
+      prestamos[index].fechaRecepcion = new Date().toISOString();
+      if (usuarioRecepcion) prestamos[index].usuarioRecepcion = usuarioRecepcion;
 
-    // Devolver robots a DISPONIBLE
-    actualizarEstadoRobots(prestamos[index].robotIds || [], 'DISPONIBLE');
+      // Al completar, eliminar el PDF para liberar espacio (mantener solo metadatos)
+      if (prestamos[index].pdfAdjunto?.data) {
+        prestamos[index].pdfAdjunto = {
+          name: prestamos[index].pdfAdjunto.name,
+          size: prestamos[index].pdfAdjunto.size,
+          data: null,
+          archivado: true,
+        };
+        console.log('🧹 PDF archivado del préstamo completado');
+      }
 
-    return prestamos[index];
+      const result = this.savePrestamos(prestamos);
+      if (!result.success) {
+        throw new Error(result.error || 'No se pudo confirmar la recepción');
+      }
+
+      // Devolver robots a DISPONIBLE
+      actualizarEstadoRobots(prestamos[index].robotIds || [], 'DISPONIBLE');
+
+      console.log('✅ Recepción confirmada para préstamo:', id);
+      return prestamos[index];
+    } catch (err: any) {
+      console.error('❌ Error en confirmarRecepcion:', err);
+      throw new Error(err.message || 'Error al confirmar recepción');
+    }
   }
 
   async reporteDemosActivas() {
     const prestamos = this.getPrestamos();
     return prestamos.filter(p => p.estado === 'ACTIVO');
+  }
+
+  // Utilidad: Limpiar PDFs de todos los préstamos completados (admin)
+  async limpiarAlmacenamiento() {
+    const prestamos = this.getPrestamos();
+    const limpios = limpiarPdfsAntiguos(prestamos);
+    const result = this.savePrestamos(limpios);
+    if (!result.success) {
+      throw new Error(result.error || 'Error al limpiar almacenamiento');
+    }
+    const tamanoMB = (JSON.stringify(limpios).length / (1024 * 1024)).toFixed(2);
+    console.log(`✅ Almacenamiento limpiado. Tamaño actual: ${tamanoMB} MB`);
+    return { success: true, tamanoMB };
   }
 }
 

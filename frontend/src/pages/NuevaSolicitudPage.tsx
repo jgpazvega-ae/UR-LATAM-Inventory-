@@ -126,8 +126,8 @@ export default function NuevaSolicitudPage() {
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError('El PDF no debe exceder 5MB')
+    if (file.size > 2 * 1024 * 1024) {
+      setError('El PDF no debe exceder 2MB (límite reducido para evitar errores de almacenamiento)')
       return
     }
 
@@ -401,7 +401,7 @@ export default function NuevaSolicitudPage() {
           {paso === 4 && (
             <div>
               <h2 className="text-xl font-semibold mb-4">📎 Adjuntar PDF de Solicitud</h2>
-              <p className="text-sm text-gray-600 mb-6">Sube el documento PDF de respaldo de tu solicitud (máximo 5MB).</p>
+              <p className="text-sm text-gray-600 mb-6">Sube el documento PDF de respaldo de tu solicitud (máximo 2MB).</p>
 
               <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4 text-sm">
                 <p className="font-semibold text-gray-700 mb-2">Resumen de la solicitud:</p>
@@ -414,7 +414,7 @@ export default function NuevaSolicitudPage() {
                   <div className="w-full px-6 py-12 border-2 border-dashed border-gray-300 hover:border-teradyne-secondary rounded-lg cursor-pointer text-center transition bg-gray-50 hover:bg-blue-50">
                     <div className="text-4xl mb-3">📄</div>
                     <p className="text-gray-700 font-medium mb-1">Haz clic para subir el PDF</p>
-                    <p className="text-xs text-gray-500">Solo archivos PDF · Máx 5MB</p>
+                    <p className="text-xs text-gray-500">Solo archivos PDF · Máx 2MB</p>
                   </div>
                   <input
                     type="file"
