@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { prestamoService } from '../services/prestamo.service'
 import { robotService } from '../services/robot.service'
 import { useAuth } from '../contexts/AuthContext'
+import { useNotification } from '../contexts/NotificationContext'
 
 const estadoBadge: Record<string, string> = {
   PENDIENTE_APROBACION: 'bg-yellow-100 text-yellow-800',
@@ -19,10 +20,75 @@ const formatFecha = (fecha?: string) =>
 export default function SolicitudDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, isGerente, isServicio } = useAuth()
+  const { addNotification } = useNotification()
   const [solicitud, setSolicitud] = useState<any>(null)
   const [robots, setRobots] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [showRechazo, setShowRechazo] = useState(false)
+  const [motivoRechazo, setMotivoRechazo] = useState('')
+  const [procesando, setProcesando] = useState(false)
+
+  const handleAprobar = async () => {
+    if (!confirm('¿Aprobar esta solicitud?')) return
+    setProcesando(true)
+    try {
+      await prestamoService.aprobar(id!)
+      addNotification('Solicitud aprobada', 'success')
+      cargar()
+    } catch (err: any) {
+      addNotification(err.message || 'Error al aprobar', 'error')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  const handleRechazar = async () => {
+    if (!motivoRechazo.trim() || motivoRechazo.length < 5) {
+      addNotification('Indica el motivo del rechazo (mínimo 5 caracteres)', 'warning')
+      return
+    }
+    setProcesando(true)
+    try {
+      await prestamoService.rechazar(id!, motivoRechazo)
+      addNotification('Solicitud rechazada', 'success')
+      setShowRechazo(false)
+      setMotivoRechazo('')
+      cargar()
+    } catch (err: any) {
+      addNotification(err.message || 'Error al rechazar', 'error')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  const handleConfirmarSalida = async () => {
+    if (!confirm('¿Confirmar la salida de los robots?')) return
+    setProcesando(true)
+    try {
+      await prestamoService.confirmarSalida(id!)
+      addNotification('Salida confirmada - Robots en préstamo', 'success')
+      cargar()
+    } catch (err: any) {
+      addNotification(err.message || 'Error al confirmar salida', 'error')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  const handleConfirmarRecepcion = async () => {
+    if (!confirm('¿Confirmar la recepción/devolución de los robots?')) return
+    setProcesando(true)
+    try {
+      await prestamoService.confirmarRecepcion(id!)
+      addNotification('Recepción confirmada - Préstamo cerrado', 'success')
+      cargar()
+    } catch (err: any) {
+      addNotification(err.message || 'Error al confirmar recepción', 'error')
+    } finally {
+      setProcesando(false)
+    }
+  }
 
   const cargar = async () => {
     if (!id) return
@@ -199,7 +265,108 @@ export default function SolicitudDetallePage() {
           </div>
         )}
 
+        {/* Motivo de Rechazo (si existe) */}
+        {solicitud.estado === 'RECHAZADO' && solicitud.motivoRechazo && (
+          <div>
+            <h3 className="text-sm font-semibold text-red-600 mb-3">MOTIVO DEL RECHAZO</h3>
+            <div className="bg-red-50 border border-red-200 p-4 rounded text-red-900">
+              {solicitud.motivoRechazo}
+            </div>
+          </div>
+        )}
+
+        {/* Botones de Acción según rol y estado */}
+        <hr />
+        <div className="flex gap-3 justify-end flex-wrap">
+          {/* Gerente: Aprobar/Rechazar pendientes */}
+          {isGerente && solicitud.estado === 'PENDIENTE_APROBACION' && (
+            <>
+              <button
+                onClick={() => setShowRechazo(true)}
+                disabled={procesando}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition disabled:opacity-50"
+              >
+                ❌ Rechazar
+              </button>
+              <button
+                onClick={handleAprobar}
+                disabled={procesando}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium transition disabled:opacity-50"
+              >
+                ✅ Aprobar
+              </button>
+            </>
+          )}
+
+          {/* Servicio: Confirmar salida cuando aprobada */}
+          {isServicio && solicitud.estado === 'APROBADO' && (
+            <button
+              onClick={handleConfirmarSalida}
+              disabled={procesando}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition disabled:opacity-50"
+            >
+              📤 Confirmar Salida de Robots
+            </button>
+          )}
+
+          {/* Servicio: Confirmar recepción cuando activa */}
+          {isServicio && solicitud.estado === 'ACTIVO' && !solicitud.estadoRecepcion && (
+            <button
+              onClick={handleConfirmarRecepcion}
+              disabled={procesando}
+              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded font-medium transition disabled:opacity-50"
+            >
+              📥 Confirmar Recepción de Robots
+            </button>
+          )}
+
+          {/* Estado Completado o sin acciones */}
+          {(solicitud.estado === 'COMPLETADO' || solicitud.estadoRecepcion === 'CONFIRMADA') && (
+            <div className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm">
+              ✅ Préstamo completado
+            </div>
+          )}
+        </div>
+
       </div>
+
+      {/* Modal de Rechazo */}
+      {showRechazo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Rechazar Solicitud</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Indica el motivo por el cual rechazas esta solicitud:
+            </p>
+            <textarea
+              value={motivoRechazo}
+              onChange={(e) => setMotivoRechazo(e.target.value)}
+              rows={4}
+              maxLength={500}
+              placeholder="Ej: No hay disponibilidad de los robots solicitados en las fechas indicadas..."
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 outline-none"
+            />
+            <div className="text-right text-xs text-gray-500 mt-1">
+              {motivoRechazo.length}/500
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => { setShowRechazo(false); setMotivoRechazo('') }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleRechazar}
+                disabled={procesando || motivoRechazo.length < 5}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition disabled:opacity-50"
+              >
+                Confirmar Rechazo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
