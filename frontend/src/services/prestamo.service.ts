@@ -52,6 +52,7 @@ class PrestamoServiceLocal {
     fechaInicio: string;
     fechaFin: string;
     motivo: string;
+    pdfAdjunto?: { name: string; size: number; data: string } | null;
   }) {
     const prestamos = this.getPrestamos();
     const nuevoId = (Math.max(...prestamos.map(p => parseInt(p.id) || 0), 0) + 1).toString();

@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { jsPDF } from 'jspdf'
 import { robotService } from '../services/robot.service'
 import { prestamoService } from '../services/prestamo.service'
 import { configuracionService } from '../services/configuracion.service'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
 
-const PASOS = ['Familia', 'Robots', 'Fechas', 'Motivo', 'PDF', 'Confirmar']
+const PASOS = ['Familia', 'Robots', 'Fechas', 'Motivo', 'Adjuntar PDF', 'Confirmar']
 
 export default function NuevaSolicitudPage() {
   const navigate = useNavigate()
@@ -27,6 +26,7 @@ export default function NuevaSolicitudPage() {
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
   const [motivo, setMotivo] = useState('')
+  const [pdfFile, setPdfFile] = useState<{ name: string; size: number; data: string } | null>(null)
 
   const fechaMinima = new Date()
   fechaMinima.setDate(fechaMinima.getDate() + diasMin)
@@ -90,9 +90,36 @@ export default function NuevaSolicitudPage() {
       case 1: return robotsSeleccionados.length > 0
       case 2: return !!fechaInicio && !!fechaFin && new Date(fechaInicio) >= fechaMinima && new Date(fechaFin) > new Date(fechaInicio)
       case 3: return motivo.length >= 10
-      case 4: return true // PDF review, siempre puede avanzar
+      case 4: return !!pdfFile // Requiere PDF para avanzar
       default: return true
     }
+  }
+
+  const handlePdfUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (file.type !== 'application/pdf') {
+      setError('El archivo debe ser un PDF')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('El PDF no debe exceder 5MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      setPdfFile({ name: file.name, size: file.size, data: result })
+      setError('')
+      console.log('✅ PDF cargado:', file.name, `${(file.size / 1024).toFixed(2)}KB`)
+    }
+    reader.onerror = () => {
+      setError('Error al leer el archivo')
+    }
+    reader.readAsDataURL(file)
   }
 
   const enviar = async () => {
@@ -104,9 +131,9 @@ export default function NuevaSolicitudPage() {
         fechaInicio,
         fechaFin,
         motivo,
-      })
-      console.log('✅ Solicitud creada:', solicitud);
-      // Mostrar mensaje de éxito y redirigir
+        pdfAdjunto: pdfFile,
+      } as any)
+      console.log('✅ Solicitud creada con PDF adjunto:', solicitud);
       setTimeout(() => {
         navigate('/solicitudes')
       }, 1000)
@@ -121,67 +148,6 @@ export default function NuevaSolicitudPage() {
   const diasDuracion = fechaInicio && fechaFin
     ? Math.ceil((new Date(fechaFin).getTime() - new Date(fechaInicio).getTime()) / (1000 * 60 * 60 * 24))
     : 0
-
-  const descargarPDF = () => {
-    try {
-      const doc = new jsPDF()
-      const pageWidth = doc.internal.pageSize.getWidth()
-      const pageHeight = doc.internal.pageSize.getHeight()
-      let yPosition = 20
-
-      // Header
-      doc.setFontSize(20)
-      doc.text('SOLICITUD DE PRÉSTAMO DE ROBOTS', pageWidth / 2, yPosition, { align: 'center' })
-
-      yPosition += 15
-      doc.setFontSize(10)
-      doc.setTextColor(100)
-      const fecha = new Date()
-      doc.text(`Fecha: ${fecha.toLocaleDateString('es-ES')} - ${fecha.toLocaleTimeString('es-ES')}`, pageWidth / 2, yPosition, { align: 'center' })
-
-      yPosition += 15
-      doc.setTextColor(0)
-      doc.setFontSize(12)
-      doc.text('DETALLES DE LA SOLICITUD', 15, yPosition)
-
-      yPosition += 10
-      doc.setFontSize(10)
-      doc.text(`Número de Robots: ${robotsSeleccionados.length}`, 15, yPosition)
-      yPosition += 7
-
-      // Robots
-      doc.text('Robots Solicitados:', 15, yPosition)
-      yPosition += 5
-      doc.setFontSize(9)
-      robotsSeleccionados.forEach(r => {
-        if (yPosition > pageHeight - 20) {
-          doc.addPage()
-          yPosition = 20
-        }
-        doc.text(`• ${r.numeroSerie} (${r.modelo})`, 20, yPosition)
-        yPosition += 5
-      })
-
-      yPosition += 3
-      doc.setFontSize(10)
-      doc.text(`Período: ${new Date(fechaInicio).toLocaleDateString('es-ES')} al ${new Date(fechaFin).toLocaleDateString('es-ES')} (${diasDuracion} días)`, 15, yPosition)
-      yPosition += 7
-
-      doc.text(`Motivo: ${motivo}`, 15, yPosition)
-      yPosition += 10
-
-      // Footer
-      doc.setFontSize(9)
-      doc.setTextColor(150)
-      doc.text('Este documento es generado automáticamente por el Sistema de Control de Inventarios de Teradyne Robotics', 15, pageHeight - 10)
-
-      // Descargar
-      doc.save(`Solicitud-Prestamo-${fecha.getTime()}.pdf`)
-      console.log('✅ PDF descargado exitosamente')
-    } catch (err) {
-      console.error('❌ Error generando PDF:', err)
-    }
-  }
 
   if (prestamoActivo) {
     return (
@@ -380,30 +346,48 @@ export default function NuevaSolicitudPage() {
 
           {paso === 4 && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">📄 Descargar PDF</h2>
-              <p className="text-sm text-gray-600 mb-6">Tu solicitud está lista. Descarga el PDF para tener un registro de los detalles.</p>
-              <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg mb-6">
-                <div className="space-y-3">
-                  <div>
-                    <span className="font-semibold text-gray-700">Robots solicitados:</span>
-                    <p className="text-sm text-gray-600 mt-1">{robotsSeleccionados.length} robot(s)</p>
+              <h2 className="text-xl font-semibold mb-4">📎 Adjuntar PDF de Solicitud</h2>
+              <p className="text-sm text-gray-600 mb-6">Sube el documento PDF de respaldo de tu solicitud (máximo 5MB).</p>
+
+              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4 text-sm">
+                <p className="font-semibold text-gray-700 mb-2">Resumen de la solicitud:</p>
+                <p className="text-gray-600">📦 {robotsSeleccionados.length} robot(s) por {diasDuracion} días</p>
+                <p className="text-gray-600 mt-1">📝 {motivo.substring(0, 80)}{motivo.length > 80 ? '...' : ''}</p>
+              </div>
+
+              {!pdfFile ? (
+                <label className="block">
+                  <div className="w-full px-6 py-12 border-2 border-dashed border-gray-300 hover:border-teradyne-secondary rounded-lg cursor-pointer text-center transition bg-gray-50 hover:bg-blue-50">
+                    <div className="text-4xl mb-3">📄</div>
+                    <p className="text-gray-700 font-medium mb-1">Haz clic para subir el PDF</p>
+                    <p className="text-xs text-gray-500">Solo archivos PDF · Máx 5MB</p>
                   </div>
-                  <div>
-                    <span className="font-semibold text-gray-700">Período:</span>
-                    <p className="text-sm text-gray-600 mt-1">{diasDuracion} días</p>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-gray-700">Motivo:</span>
-                    <p className="text-sm text-gray-600 mt-1">{motivo}</p>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handlePdfUpload}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <div className="border-2 border-green-300 bg-green-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl">✅</div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{pdfFile.name}</p>
+                        <p className="text-xs text-gray-600">{(pdfFile.size / 1024).toFixed(2)} KB</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setPdfFile(null)}
+                      className="px-3 py-1 text-sm text-red-600 hover:bg-red-100 rounded transition"
+                    >
+                      🗑️ Eliminar
+                    </button>
                   </div>
                 </div>
-              </div>
-              <button
-                onClick={() => descargarPDF()}
-                className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
-              >
-                📥 Descargar PDF de Solicitud
-              </button>
+              )}
             </div>
           )}
 
@@ -423,8 +407,18 @@ export default function NuevaSolicitudPage() {
                   <div className="text-xs font-semibold text-gray-500 mb-1">MOTIVO</div>
                   <div className="text-sm">{motivo}</div>
                 </div>
+                {pdfFile && (
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded">
+                    <div className="text-xs font-semibold text-blue-700 mb-1">PDF ADJUNTO</div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span>📎</span>
+                      <span className="font-semibold">{pdfFile.name}</span>
+                      <span className="text-gray-500">({(pdfFile.size / 1024).toFixed(2)} KB)</span>
+                    </div>
+                  </div>
+                )}
                 <div className="bg-green-50 border border-green-200 p-4 rounded text-sm text-green-900">
-                  ✅ Tu solicitud será creada con los detalles anteriores. Puedes descargar el PDF antes de confirmar.
+                  ✅ Al confirmar, se enviará la solicitud completa con el PDF adjunto para aprobación.
                 </div>
               </div>
             </div>

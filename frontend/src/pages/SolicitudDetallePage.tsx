@@ -176,6 +176,29 @@ export default function SolicitudDetallePage() {
           </div>
         </div>
 
+        {/* PDF Adjunto */}
+        {solicitud.pdfAdjunto && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">PDF ADJUNTO</h3>
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">📎</div>
+                <div>
+                  <p className="font-semibold text-gray-900">{solicitud.pdfAdjunto.name}</p>
+                  <p className="text-xs text-gray-600">{(solicitud.pdfAdjunto.size / 1024).toFixed(2)} KB</p>
+                </div>
+              </div>
+              <a
+                href={solicitud.pdfAdjunto.data}
+                download={solicitud.pdfAdjunto.name}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition"
+              >
+                📥 Descargar
+              </a>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   )
