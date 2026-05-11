@@ -29,7 +29,8 @@ class ErrorBoundary extends Component<Props, State> {
 
   private resetError = () => {
     this.setState({ hasError: false, error: null, errorInfo: null })
-    window.location.href = '/UR-LATAM-Inventory-/'
+    const basename = window.location.hostname.includes('github.io') ? '/UR-LATAM-Inventory-' : ''
+    window.location.href = `${basename}/`
   }
 
   public render() {
@@ -72,7 +73,8 @@ class ErrorBoundary extends Component<Props, State> {
               <button
                 onClick={() => {
                   localStorage.clear()
-                  window.location.href = '/UR-LATAM-Inventory-/login'
+                  const basename = window.location.hostname.includes('github.io') ? '/UR-LATAM-Inventory-' : ''
+                  window.location.href = `${basename}/login`
                 }}
                 className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium transition"
               >

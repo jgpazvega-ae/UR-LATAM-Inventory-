@@ -21,8 +21,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      const basename = window.location.hostname.includes('github.io') ? '/UR-LATAM-Inventory-' : '';
+      const loginPath = `${basename}/login`;
+      if (!window.location.pathname.endsWith('/login')) {
+        window.location.href = loginPath;
       }
     }
     return Promise.reject(error);

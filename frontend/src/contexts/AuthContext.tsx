@@ -33,7 +33,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     authService.logout();
     setUser(null);
-    window.location.href = '/login';
+    const basename = window.location.hostname.includes('github.io') ? '/UR-LATAM-Inventory-' : '';
+    window.location.href = `${basename}/login`;
   };
 
   const value: AuthContextType = {
