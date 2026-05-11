@@ -20,6 +20,9 @@ export default function Sidebar() {
         <NavLink to="/" end className={linkClass}>
           Dashboard
         </NavLink>
+        <NavLink to="/notificaciones" className={linkClass}>
+          🔔 Notificaciones
+        </NavLink>
         <NavLink to="/solicitudes" className={linkClass}>
           Solicitudes
         </NavLink>
