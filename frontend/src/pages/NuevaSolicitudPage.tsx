@@ -8,6 +8,19 @@ import { useAuth } from '../contexts/AuthContext'
 
 const PASOS = ['Familia', 'Robots', 'Fechas', 'Motivo', 'Adjuntar PDF', 'Confirmar']
 
+const isWeekend = (date: Date): boolean => {
+  const day = date.getDay();
+  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+};
+
+const getNextWorkday = (date: Date): Date => {
+  const next = new Date(date);
+  while (isWeekend(next)) {
+    next.setDate(next.getDate() + 1);
+  }
+  return next;
+};
+
 export default function NuevaSolicitudPage() {
   const navigate = useNavigate()
   const { currentRegion } = useRegionLanguage()
@@ -86,11 +99,18 @@ export default function NuevaSolicitudPage() {
     }
   }
 
+  const hasWeekendDates = () => {
+    if (!fechaInicio || !fechaFin) return false;
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    return isWeekend(inicio) || isWeekend(fin);
+  };
+
   const puedeAvanzar = () => {
     switch (paso) {
       case 0: return !!familiaId
       case 1: return robotsSeleccionados.length > 0
-      case 2: return !!fechaInicio && !!fechaFin && new Date(fechaInicio) >= fechaMinima && new Date(fechaFin) > new Date(fechaInicio)
+      case 2: return !!fechaInicio && !!fechaFin && new Date(fechaInicio) >= fechaMinima && new Date(fechaFin) > new Date(fechaInicio) && !hasWeekendDates()
       case 3: return motivo.length >= 10
       case 4: return !!pdfFile // Requiere PDF para avanzar
       default: return true
@@ -292,6 +312,11 @@ export default function NuevaSolicitudPage() {
               <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-6 text-sm text-yellow-800">
                 ⚠️ <strong>Mínimo {diasMin} días de anticipación.</strong> Fecha mínima: {new Date(fechaMinimaStr).toLocaleDateString('es-ES')}
               </div>
+              {hasWeekendDates() && (
+                <div className="bg-red-50 border border-red-200 rounded p-3 mb-6 text-sm text-red-800">
+                  ❌ <strong>No se permiten fines de semana.</strong> Los préstamos solo pueden ser en días de semana (lunes a viernes).
+                </div>
+              )}
 
               <div className="space-y-6">
                 <div>
@@ -300,11 +325,21 @@ export default function NuevaSolicitudPage() {
                     type="date"
                     value={fechaInicio}
                     min={fechaMinimaStr}
-                    onChange={(e) => setFechaInicio(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teradyne-secondary focus:ring-2 focus:ring-teradyne-secondary outline-none text-lg"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value && isWeekend(new Date(value))) {
+                        const next = getNextWorkday(new Date(value));
+                        setFechaInicio(next.toISOString().split('T')[0]);
+                      } else {
+                        setFechaInicio(value);
+                      }
+                    }}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-teradyne-secondary outline-none text-lg ${
+                      fechaInicio && isWeekend(new Date(fechaInicio)) ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                    }`}
                   />
                   {fechaInicio && (
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className={`text-sm mt-2 ${isWeekend(new Date(fechaInicio)) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
                       {new Date(fechaInicio).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                   )}
@@ -322,11 +357,21 @@ export default function NuevaSolicitudPage() {
                     type="date"
                     value={fechaFin}
                     min={fechaInicio || fechaMinimaStr}
-                    onChange={(e) => setFechaFin(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teradyne-secondary focus:ring-2 focus:ring-teradyne-secondary outline-none text-lg"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value && isWeekend(new Date(value))) {
+                        const next = getNextWorkday(new Date(value));
+                        setFechaFin(next.toISOString().split('T')[0]);
+                      } else {
+                        setFechaFin(value);
+                      }
+                    }}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-teradyne-secondary outline-none text-lg ${
+                      fechaFin && isWeekend(new Date(fechaFin)) ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                    }`}
                   />
                   {fechaFin && (
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className={`text-sm mt-2 ${isWeekend(new Date(fechaFin)) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
                       {new Date(fechaFin).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                   )}

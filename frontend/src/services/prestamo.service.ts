@@ -3,21 +3,43 @@ const PRESTAMOS_INICIALES: any[] = [];
 // Helper para actualizar estado de robots
 const actualizarEstadoRobots = (robotIds: string[], nuevoEstado: string) => {
   try {
+    if (!robotIds || robotIds.length === 0) {
+      console.log('⚠️ No hay robots para actualizar');
+      return;
+    }
+
     const stored = localStorage.getItem('robots-demo');
-    if (!stored) return;
+    if (!stored) {
+      console.warn('⚠️ No se encontró almacenamiento de robots');
+      return;
+    }
+
     const robots = JSON.parse(stored);
+    if (!Array.isArray(robots)) {
+      console.error('❌ Robots no es un array válido');
+      return;
+    }
+
     let cambios = 0;
-    robotIds.forEach(id => {
-      const robot = robots.find((r: any) => r.id === id);
-      if (robot) {
+    robotIds.forEach((id: string) => {
+      const robot = robots.find((r: any) => r && r.id === id);
+      if (robot && robot.estado !== undefined) {
+        const estadoAnterior = robot.estado;
         robot.estado = nuevoEstado;
         cambios++;
+        console.log(`  ✓ Robot ${id}: ${estadoAnterior} → ${nuevoEstado}`);
+      } else {
+        console.log(`  ⚠️ Robot ${id} no encontrado o estructura inválida`);
       }
     });
-    localStorage.setItem('robots-demo', JSON.stringify(robots));
-    console.log(`🤖 ${cambios} robot(s) actualizados a ${nuevoEstado}`);
+
+    if (cambios > 0) {
+      localStorage.setItem('robots-demo', JSON.stringify(robots));
+      console.log(`🤖 ${cambios} robot(s) actualizados a ${nuevoEstado}`);
+    }
   } catch (err) {
-    console.error('Error actualizando robots:', err);
+    console.error('❌ Error actualizando robots:', err);
+    throw new Error(`Error al actualizar estado de robots: ${(err as any).message}`);
   }
 };
 
