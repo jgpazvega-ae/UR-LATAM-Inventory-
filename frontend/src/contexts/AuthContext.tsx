@@ -33,8 +33,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     authService.logout();
     setUser(null);
-    const basename = window.location.hostname.includes('github.io') ? '/UR-LATAM-Inventory-' : '';
-    window.location.href = `${basename}/login`;
+    // Usar BASE_URL de Vite que siempre es correcto (/ en local, /UR-LATAM-Inventory-/ en GH Pages)
+    const baseUrl = (import.meta as any).env?.BASE_URL || '/';
+    window.location.href = `${baseUrl}login`.replace('//', '/');
   };
 
   const value: AuthContextType = {

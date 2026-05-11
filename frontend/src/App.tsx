@@ -25,8 +25,8 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
   return user ? children : <Navigate to="/login" />
 }
 
-// Detectar si estamos en GitHub Pages para usar basename
-const basename = window.location.hostname.includes('github.io') ? '/UR-LATAM-Inventory-' : '/'
+// Usar BASE_URL de Vite (/ en dev, /UR-LATAM-Inventory-/ en GitHub Pages)
+const basename = ((import.meta as any).env?.BASE_URL || '/').replace(/\/$/, '') || '/'
 
 function App() {
   return (

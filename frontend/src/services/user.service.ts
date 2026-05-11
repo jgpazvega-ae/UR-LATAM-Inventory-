@@ -42,8 +42,11 @@ class UserServiceLocal {
     const usuarios = this.getUsuarios();
     let result = usuarios;
 
-    if (filters.activo !== undefined) {
-      result = result.filter((u: any) => u.activo === filters.activo);
+    // Filtro activo más robusto: si activo===true, excluye solo los explícitamente false
+    if (filters.activo === true) {
+      result = result.filter((u: any) => u.activo !== false);
+    } else if (filters.activo === false) {
+      result = result.filter((u: any) => u.activo === false);
     }
 
     if (filters.rol) {
@@ -52,6 +55,7 @@ class UserServiceLocal {
 
     if (filters.region) {
       result = result.filter((u: any) => u.region === filters.region);
+      console.log(`📍 Filtrando por región "${filters.region}": ${result.length} usuarios encontrados`);
     }
 
     return result;
