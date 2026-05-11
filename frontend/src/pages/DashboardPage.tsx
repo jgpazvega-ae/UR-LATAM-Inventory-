@@ -34,13 +34,13 @@ export default function DashboardPage() {
 
         const ahora = new Date()
         const vencidas = todas.filter((s: any) => {
-          const fechaFin = new Date(s.fechaFinSolicitada)
+          const fechaFin = new Date(s.fechaFin || s.fechaFinSolicitada)
           return s.estado === 'ACTIVO' && fechaFin < ahora
         })
 
         const enPrestamo = todas.filter((s: any) => s.estado === 'ACTIVO').map((s: any) => ({
           ...s,
-          diasRestantes: Math.ceil((new Date(s.fechaFinSolicitada).getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24))
+          diasRestantes: Math.ceil((new Date(s.fechaFin || s.fechaFinSolicitada).getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24))
         }))
 
         setStats({
@@ -111,11 +111,11 @@ export default function DashboardPage() {
                             {s.numeroSolicitud}
                           </Link>
                         </td>
-                        <td className="px-6 py-3 text-sm">{s.usuarioSolicitante.nombreCompleto}</td>
-                        <td className="px-6 py-3 text-sm text-gray-600">{formatFecha(s.fechaInioSolicitada)}</td>
+                        <td className="px-6 py-3 text-sm">{s.usuarioSolicitante?.nombreCompleto || 'Usuario'}</td>
+                        <td className="px-6 py-3 text-sm text-gray-600">{formatFecha(s.fechaInicio || s.fechaInioSolicitada)}</td>
                         <td className="px-6 py-3">
                           <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                            {s.estado.replace('_', ' ')}
+                            {s.estado?.replace('_', ' ') || 'DESCONOCIDO'}
                           </span>
                         </td>
                       </tr>
@@ -144,16 +144,16 @@ export default function DashboardPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {solicitudesVencidas.map((s: any) => {
-                      const diasVencido = Math.ceil((new Date().getTime() - new Date(s.fechaFinSolicitada).getTime()) / (1000 * 60 * 60 * 24))
+                      const diasVencido = Math.ceil((new Date().getTime() - new Date(s.fechaFin || s.fechaFinSolicitada).getTime()) / (1000 * 60 * 60 * 24))
                       return (
                         <tr key={s.id} className="hover:bg-red-50 bg-red-50">
-                          <td className="px-6 py-3 text-sm font-medium">{s.usuarioSolicitante.nombreCompleto}</td>
+                          <td className="px-6 py-3 text-sm font-medium">{s.usuarioSolicitante?.nombreCompleto || 'Usuario'}</td>
                           <td className="px-6 py-3 font-mono text-sm">
                             <Link to={`/solicitudes/${s.id}`} className="text-blue-600 hover:underline">
                               {s.numeroSolicitud}
                             </Link>
                           </td>
-                          <td className="px-6 py-3 text-sm text-gray-600">{formatFecha(s.fechaFinSolicitada)}</td>
+                          <td className="px-6 py-3 text-sm text-gray-600">{formatFecha(s.fechaFin || s.fechaFinSolicitada)}</td>
                           <td className="px-6 py-3">
                             <span className="text-sm font-bold text-red-600">{diasVencido} días</span>
                           </td>
@@ -190,8 +190,8 @@ export default function DashboardPage() {
                             {s.numeroSolicitud}
                           </Link>
                         </td>
-                        <td className="px-6 py-3 text-sm">{s.usuarioSolicitante.nombreCompleto}</td>
-                        <td className="px-6 py-3 text-sm text-gray-600">{formatFecha(s.fechaFinSolicitada)}</td>
+                        <td className="px-6 py-3 text-sm">{s.usuarioSolicitante?.nombreCompleto || 'Usuario'}</td>
+                        <td className="px-6 py-3 text-sm text-gray-600">{formatFecha(s.fechaFin || s.fechaFinSolicitada)}</td>
                         <td className="px-6 py-3">
                           <span className={`text-sm font-bold ${s.diasRestantes > 0 ? 'text-blue-600' : 'text-red-600'}`}>
                             {s.diasRestantes > 0 ? `${s.diasRestantes} días` : `Vencido hace ${Math.abs(s.diasRestantes)} días`}
