@@ -33,7 +33,7 @@ export default function SolicitudDetallePage() {
     if (!confirm('¿Aprobar esta solicitud?')) return
     setProcesando(true)
     try {
-      await prestamoService.aprobar(id!)
+      await prestamoService.aprobar(id!, user ? { id: user.id, nombreCompleto: user.nombreCompleto } : undefined)
       addNotification('Solicitud aprobada', 'success')
       cargar()
     } catch (err: any) {
@@ -50,7 +50,7 @@ export default function SolicitudDetallePage() {
     }
     setProcesando(true)
     try {
-      await prestamoService.rechazar(id!, motivoRechazo)
+      await prestamoService.rechazar(id!, motivoRechazo, user ? { id: user.id, nombreCompleto: user.nombreCompleto } : undefined)
       addNotification('Solicitud rechazada', 'success')
       setShowRechazo(false)
       setMotivoRechazo('')
@@ -66,7 +66,7 @@ export default function SolicitudDetallePage() {
     if (!confirm('¿Confirmar la salida de los robots?')) return
     setProcesando(true)
     try {
-      await prestamoService.confirmarSalida(id!)
+      await prestamoService.confirmarSalida(id!, user ? { id: user.id, nombreCompleto: user.nombreCompleto } : undefined)
       addNotification('Salida confirmada - Robots en préstamo', 'success')
       cargar()
     } catch (err: any) {
@@ -80,7 +80,7 @@ export default function SolicitudDetallePage() {
     if (!confirm('¿Confirmar la recepción/devolución de los robots?')) return
     setProcesando(true)
     try {
-      await prestamoService.confirmarRecepcion(id!)
+      await prestamoService.confirmarRecepcion(id!, user ? { id: user.id, nombreCompleto: user.nombreCompleto } : undefined)
       addNotification('Recepción confirmada - Préstamo cerrado', 'success')
       cargar()
     } catch (err: any) {
@@ -179,9 +179,12 @@ export default function SolicitudDetallePage() {
             <div className="font-mono text-lg font-semibold text-gray-900">{solicitud.numeroSolicitud}</div>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-500 mb-2">USUARIO ACTUAL</h3>
-            <div className="text-gray-900">{user?.nombreCompleto}</div>
-            <div className="text-sm text-gray-600">{user?.email}</div>
+            <h3 className="text-sm font-semibold text-gray-500 mb-2">SOLICITANTE</h3>
+            <div className="text-gray-900">{solicitud.usuarioSolicitante?.nombreCompleto || 'No registrado'}</div>
+            <div className="text-sm text-gray-600">{solicitud.usuarioSolicitante?.email || ''}</div>
+            {solicitud.usuarioSolicitante?.rol && (
+              <div className="text-xs text-gray-500 mt-1">{solicitud.usuarioSolicitante.rol.replace('_', ' ')}</div>
+            )}
           </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-500 mb-2">CANTIDAD DE ROBOTS</h3>
@@ -241,6 +244,51 @@ export default function SolicitudDetallePage() {
             {solicitud.motivo || 'Sin motivo especificado'}
           </div>
         </div>
+
+        {/* Historial de Acciones */}
+        {(solicitud.usuarioAprobador || solicitud.usuarioRechazo || solicitud.usuarioSalida || solicitud.usuarioRecepcion) && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">HISTORIAL DE ACCIONES</h3>
+            <div className="space-y-2">
+              {solicitud.usuarioAprobador && (
+                <div className="flex items-center gap-3 bg-blue-50 p-3 rounded text-sm">
+                  <span className="text-xl">✅</span>
+                  <div className="flex-1">
+                    <div><strong>Aprobada</strong> por {solicitud.usuarioAprobador.nombreCompleto}</div>
+                    <div className="text-xs text-gray-600">{formatFecha(solicitud.fechaAprobacion)}</div>
+                  </div>
+                </div>
+              )}
+              {solicitud.usuarioRechazo && (
+                <div className="flex items-center gap-3 bg-red-50 p-3 rounded text-sm">
+                  <span className="text-xl">❌</span>
+                  <div className="flex-1">
+                    <div><strong>Rechazada</strong> por {solicitud.usuarioRechazo.nombreCompleto}</div>
+                    <div className="text-xs text-gray-600">{formatFecha(solicitud.fechaRechazo)}</div>
+                  </div>
+                </div>
+              )}
+              {solicitud.usuarioSalida && (
+                <div className="flex items-center gap-3 bg-green-50 p-3 rounded text-sm">
+                  <span className="text-xl">📤</span>
+                  <div className="flex-1">
+                    <div><strong>Salida confirmada</strong> por {solicitud.usuarioSalida.nombreCompleto}</div>
+                    <div className="text-xs text-gray-600">{formatFecha(solicitud.fechaSalida)}</div>
+                  </div>
+                </div>
+              )}
+              {solicitud.usuarioRecepcion && (
+                <div className="flex items-center gap-3 bg-purple-50 p-3 rounded text-sm">
+                  <span className="text-xl">📥</span>
+                  <div className="flex-1">
+                    <div><strong>Recepción confirmada</strong> por {solicitud.usuarioRecepcion.nombreCompleto}</div>
+                    <div className="text-xs text-gray-600">{formatFecha(solicitud.fechaRecepcion)}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* PDF Adjunto */}
         {solicitud.pdfAdjunto && (

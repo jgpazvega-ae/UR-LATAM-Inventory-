@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom'
 import { prestamoService } from '../services/prestamo.service'
 import { robotService } from '../services/robot.service'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
+import { useAuth } from '../contexts/AuthContext'
 import StatCard from '../components/StatCard'
 
 const formatFecha = (fecha: string) =>
   new Date(fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
 
 export default function DashboardPage() {
-  const { t } = useRegionLanguage()
+  const { t, currentRegion } = useRegionLanguage()
+  const { user } = useAuth()
   const [stats, setStats] = useState({
     pendientes: 0,
     aprobadas: 0,
@@ -28,8 +30,8 @@ export default function DashboardPage() {
     const cargar = async () => {
       try {
         const [todas, robots] = await Promise.all([
-          prestamoService.listar(),
-          robotService.listar(),
+          prestamoService.listar({ region: currentRegion }),
+          robotService.listar({ region: currentRegion }),
         ])
 
         const ahora = new Date()
@@ -63,15 +65,25 @@ export default function DashboardPage() {
       }
     }
     cargar()
-  }, [])
+  }, [currentRegion])
 
   if (loading) return <div className="text-center py-8">Cargando...</div>
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">{t('dashboard.title')}</h1>
-        <p className="text-gray-600 mt-1">{t('dashboard.subtitle')}</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">{t('dashboard.title')}</h1>
+          <p className="text-gray-600 mt-1">
+            👋 Bienvenido, <strong>{user?.nombreCompleto}</strong> · Región: <strong>{currentRegion}</strong>
+          </p>
+        </div>
+        <Link
+          to="/solicitudes/nueva"
+          className="bg-teradyne-secondary hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm"
+        >
+          + Nueva Solicitud
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

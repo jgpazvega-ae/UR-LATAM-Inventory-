@@ -4,12 +4,14 @@ import { robotService } from '../services/robot.service'
 import { prestamoService } from '../services/prestamo.service'
 import { configuracionService } from '../services/configuracion.service'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
+import { useAuth } from '../contexts/AuthContext'
 
 const PASOS = ['Familia', 'Robots', 'Fechas', 'Motivo', 'Adjuntar PDF', 'Confirmar']
 
 export default function NuevaSolicitudPage() {
   const navigate = useNavigate()
   const { currentRegion } = useRegionLanguage()
+  const { user } = useAuth()
   const [paso, setPaso] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -132,6 +134,13 @@ export default function NuevaSolicitudPage() {
         fechaFin,
         motivo,
         pdfAdjunto: pdfFile,
+        usuarioSolicitante: user ? {
+          id: user.id,
+          nombreCompleto: user.nombreCompleto,
+          email: user.email,
+          rol: user.rol,
+        } : undefined,
+        region: currentRegion,
       } as any)
       console.log('✅ Solicitud creada con PDF adjunto:', solicitud);
       setTimeout(() => {

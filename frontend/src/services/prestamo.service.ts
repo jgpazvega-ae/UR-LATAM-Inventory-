@@ -1,5 +1,26 @@
 const PRESTAMOS_INICIALES: any[] = [];
 
+// Helper para actualizar estado de robots
+const actualizarEstadoRobots = (robotIds: string[], nuevoEstado: string) => {
+  try {
+    const stored = localStorage.getItem('robots-demo');
+    if (!stored) return;
+    const robots = JSON.parse(stored);
+    let cambios = 0;
+    robotIds.forEach(id => {
+      const robot = robots.find((r: any) => r.id === id);
+      if (robot) {
+        robot.estado = nuevoEstado;
+        cambios++;
+      }
+    });
+    localStorage.setItem('robots-demo', JSON.stringify(robots));
+    console.log(`🤖 ${cambios} robot(s) actualizados a ${nuevoEstado}`);
+  } catch (err) {
+    console.error('Error actualizando robots:', err);
+  }
+};
+
 class PrestamoServiceLocal {
   private key = 'prestamos-demo';
 
@@ -21,7 +42,7 @@ class PrestamoServiceLocal {
     localStorage.setItem(this.key, JSON.stringify(prestamos));
   }
 
-  async listar(filtros?: { estado?: string; usuario?: string }) {
+  async listar(filtros?: { estado?: string; usuario?: string; region?: string; usuarioId?: string }) {
     try {
       let prestamos = this.getPrestamos();
 
@@ -29,9 +50,16 @@ class PrestamoServiceLocal {
         prestamos = prestamos.filter(p => p.estado === filtros.estado);
       }
 
-      if (filtros?.usuario) {
-        prestamos = prestamos.filter(p => p.usuario === filtros.usuario);
+      if (filtros?.region) {
+        prestamos = prestamos.filter(p => p.region === filtros.region);
       }
+
+      if (filtros?.usuarioId) {
+        prestamos = prestamos.filter(p => p.usuarioSolicitante?.id === filtros.usuarioId);
+      }
+
+      // Ordenar más recientes primero
+      prestamos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       console.log('📋 Préstamos cargados:', prestamos.length);
       return prestamos;
@@ -53,6 +81,8 @@ class PrestamoServiceLocal {
     fechaFin: string;
     motivo: string;
     pdfAdjunto?: { name: string; size: number; data: string } | null;
+    usuarioSolicitante?: { id: string; nombreCompleto: string; email: string; rol: string };
+    region?: string;
   }) {
     const prestamos = this.getPrestamos();
     const nuevoId = (Math.max(...prestamos.map(p => parseInt(p.id) || 0), 0) + 1).toString();
@@ -73,46 +103,61 @@ class PrestamoServiceLocal {
     return nuevoPrestamo;
   }
 
-  async aprobar(id: string) {
+  async aprobar(id: string, usuarioAprobador?: { id: string; nombreCompleto: string }) {
     const prestamos = this.getPrestamos();
     const index = prestamos.findIndex(p => p.id === id);
     if (index === -1) throw new Error('Préstamo no encontrado');
 
     prestamos[index].estado = 'APROBADO';
+    prestamos[index].fechaAprobacion = new Date().toISOString();
+    if (usuarioAprobador) prestamos[index].usuarioAprobador = usuarioAprobador;
     this.savePrestamos(prestamos);
     return prestamos[index];
   }
 
-  async rechazar(id: string, motivoRechazo: string) {
+  async rechazar(id: string, motivoRechazo: string, usuarioRechazo?: { id: string; nombreCompleto: string }) {
     const prestamos = this.getPrestamos();
     const index = prestamos.findIndex(p => p.id === id);
     if (index === -1) throw new Error('Préstamo no encontrado');
 
     prestamos[index].estado = 'RECHAZADO';
     prestamos[index].motivoRechazo = motivoRechazo;
+    prestamos[index].fechaRechazo = new Date().toISOString();
+    if (usuarioRechazo) prestamos[index].usuarioRechazo = usuarioRechazo;
     this.savePrestamos(prestamos);
     return prestamos[index];
   }
 
-  async confirmarSalida(id: string) {
+  async confirmarSalida(id: string, usuarioSalida?: { id: string; nombreCompleto: string }) {
     const prestamos = this.getPrestamos();
     const index = prestamos.findIndex(p => p.id === id);
     if (index === -1) throw new Error('Préstamo no encontrado');
 
     prestamos[index].estado = 'ACTIVO';
     prestamos[index].fechaSalida = new Date().toISOString();
+    if (usuarioSalida) prestamos[index].usuarioSalida = usuarioSalida;
     this.savePrestamos(prestamos);
+
+    // Actualizar robots a EN_PRESTAMO
+    actualizarEstadoRobots(prestamos[index].robotIds || [], 'EN_PRESTAMO');
+
     return prestamos[index];
   }
 
-  async confirmarRecepcion(id: string) {
+  async confirmarRecepcion(id: string, usuarioRecepcion?: { id: string; nombreCompleto: string }) {
     const prestamos = this.getPrestamos();
     const index = prestamos.findIndex(p => p.id === id);
     if (index === -1) throw new Error('Préstamo no encontrado');
 
+    prestamos[index].estado = 'COMPLETADO';
     prestamos[index].estadoRecepcion = 'CONFIRMADA';
     prestamos[index].fechaRecepcion = new Date().toISOString();
+    if (usuarioRecepcion) prestamos[index].usuarioRecepcion = usuarioRecepcion;
     this.savePrestamos(prestamos);
+
+    // Devolver robots a DISPONIBLE
+    actualizarEstadoRobots(prestamos[index].robotIds || [], 'DISPONIBLE');
+
     return prestamos[index];
   }
 
