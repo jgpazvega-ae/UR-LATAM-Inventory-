@@ -1,24 +1,35 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
-import { usuariosPorRegion } from '../data/usuarios'
+import { userService } from '../services/user.service'
 
 export default function LoginPage() {
   const [selectedUserId, setSelectedUserId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [usuariosRegion, setUsuariosRegion] = useState<any[]>([])
   const navigate = useNavigate()
   const { login } = useAuth()
   const { currentRegion, currentIdioma, setRegion, setIdioma, t } = useRegionLanguage()
 
-  const usuariosRegion = useMemo(
-    () => usuariosPorRegion[currentRegion as keyof typeof usuariosPorRegion] || [],
-    [currentRegion]
-  )
+  useEffect(() => {
+    const cargarUsuarios = async () => {
+      try {
+        console.log('🔍 Cargando usuarios para región:', currentRegion)
+        const users = await userService.listarPorRegion(currentRegion)
+        console.log('✅ Usuarios cargados:', users.length, users)
+        setUsuariosRegion(users)
+      } catch (err) {
+        console.error('❌ Error cargando usuarios:', err)
+        setUsuariosRegion([])
+      }
+    }
+    cargarUsuarios()
+  }, [currentRegion])
 
-  const usuarioSeleccionado = usuariosRegion.find(u => u.id === selectedUserId)
+  const usuarioSeleccionado = usuariosRegion.find((u: any) => u.id === selectedUserId)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

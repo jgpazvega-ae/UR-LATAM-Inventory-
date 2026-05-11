@@ -50,7 +50,15 @@ class UserServiceLocal {
       result = result.filter((u: any) => u.rol === filters.rol);
     }
 
+    if (filters.region) {
+      result = result.filter((u: any) => u.region === filters.region);
+    }
+
     return result;
+  }
+
+  async listarPorRegion(region: string) {
+    return this.listar({ region, activo: true });
   }
 
   async obtener(id: string) {

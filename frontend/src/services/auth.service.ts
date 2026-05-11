@@ -15,9 +15,32 @@ const DEMO_PASSWORD = 'latamrules123';
 
 // Función auxiliar para obtener usuario de datos de demo
 const getUserFromDemo = (email: string): Usuario | null => {
+  // 1. Primero buscar en localStorage (incluye usuarios creados por admin)
+  try {
+    const stored = localStorage.getItem('usuarios-demo');
+    if (stored) {
+      const usuarios = JSON.parse(stored);
+      const user = usuarios.find((u: any) => u.email === email && u.activo !== false);
+      if (user) {
+        console.log('✅ Usuario encontrado en localStorage:', user.nombreCompleto);
+        return {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          nombreCompleto: user.nombreCompleto,
+          rol: user.rol as any,
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Error leyendo usuarios de localStorage:', err);
+  }
+
+  // 2. Fallback: buscar en datos iniciales del archivo estático
   for (const region of Object.values(usuariosPorRegion)) {
     const user = region.find(u => u.email === email);
     if (user) {
+      console.log('✅ Usuario encontrado en datos iniciales:', user.nombreCompleto);
       return {
         id: user.id,
         username: user.username,
@@ -27,6 +50,8 @@ const getUserFromDemo = (email: string): Usuario | null => {
       };
     }
   }
+
+  console.warn('⚠️ Usuario no encontrado:', email);
   return null;
 };
 
