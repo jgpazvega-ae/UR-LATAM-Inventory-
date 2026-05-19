@@ -32,6 +32,9 @@ export default function Sidebar() {
         <NavLink to="/robots" className={linkClass}>
           Robots
         </NavLink>
+        <NavLink to="/mantenimiento" className={linkClass}>
+          🔧 Mantenimiento
+        </NavLink>
         {(isGerente || isAdmin) && (
           <>
             <NavLink to="/reportes" className={linkClass}>

@@ -20,6 +20,7 @@ import NotificacionesPage from './pages/NotificacionesPage'
 import UbicacionesPage from './pages/UbicacionesPage'
 import ReportsPage from './pages/ReportsPage'
 import RobotMovementsPage from './pages/RobotMovementsPage'
+import MaintenancePage from './pages/MaintenancePage'
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth()
@@ -54,6 +55,7 @@ function App() {
                     <Route path="/solicitudes/:id" element={<ErrorBoundary><SolicitudDetallePage /></ErrorBoundary>} />
                     <Route path="/robots" element={<ErrorBoundary><RobotsPage /></ErrorBoundary>} />
                     <Route path="/robots/:robotId/movements" element={<ErrorBoundary><RobotMovementsPage /></ErrorBoundary>} />
+                    <Route path="/mantenimiento" element={<ErrorBoundary><MaintenancePage /></ErrorBoundary>} />
                     <Route path="/configuracion" element={<ErrorBoundary><ConfiguracionPage /></ErrorBoundary>} />
                     <Route path="/reportes/demos" element={<ErrorBoundary><ReporteDemosPage /></ErrorBoundary>} />
                     <Route path="/reportes" element={<ErrorBoundary><ReportsPage /></ErrorBoundary>} />
