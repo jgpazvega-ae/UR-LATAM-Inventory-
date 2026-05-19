@@ -18,6 +18,7 @@ import ReporteDemosPage from './pages/ReporteDemosPage'
 import GestionContraseñasPage from './pages/GestionContraseñasPage'
 import NotificacionesPage from './pages/NotificacionesPage'
 import UbicacionesPage from './pages/UbicacionesPage'
+import ReportsPage from './pages/ReportsPage'
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth()
@@ -53,6 +54,7 @@ function App() {
                     <Route path="/robots" element={<ErrorBoundary><RobotsPage /></ErrorBoundary>} />
                     <Route path="/configuracion" element={<ErrorBoundary><ConfiguracionPage /></ErrorBoundary>} />
                     <Route path="/reportes/demos" element={<ErrorBoundary><ReporteDemosPage /></ErrorBoundary>} />
+                    <Route path="/reportes" element={<ErrorBoundary><ReportsPage /></ErrorBoundary>} />
                     <Route path="/gestion-contrasenas" element={<ErrorBoundary><GestionContraseñasPage /></ErrorBoundary>} />
                     <Route path="*" element={<Navigate to="/" />} />
                   </Route>
