@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { robotService } from '../services/robot.service'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotification } from '../contexts/NotificationContext'
@@ -12,6 +13,7 @@ const estadoBadge: Record<string, string> = {
 }
 
 export default function RobotsPage() {
+  const navigate = useNavigate()
   const { isAdmin, user } = useAuth()
   const { addNotification } = useNotification()
   const { currentRegion } = useRegionLanguage()
@@ -142,7 +144,7 @@ export default function RobotsPage() {
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Familia</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Ubicación</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Estado</th>
-                {puedeEditar && <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">Acciones</th>}
+                <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -157,22 +159,31 @@ export default function RobotsPage() {
                       {r.estado.replace('_', ' ')}
                     </span>
                   </td>
-                  {puedeEditar && (
-                    <td className="px-6 py-4 text-right text-sm space-x-2">
-                      <button
-                        onClick={() => { setEditing(r); setShowModal(true) }}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleEliminar(r.id)}
-                        className="text-red-600 hover:text-red-800 font-medium"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  )}
+                  <td className="px-6 py-4 text-right text-sm space-x-2">
+                    <button
+                      onClick={() => navigate(`/robots/${r.id}/movements`)}
+                      className="text-purple-600 hover:text-purple-800 font-medium"
+                      title="Ver historial de movimientos"
+                    >
+                      📊 Historial
+                    </button>
+                    {puedeEditar && (
+                      <>
+                        <button
+                          onClick={() => { setEditing(r); setShowModal(true) }}
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleEliminar(r.id)}
+                          className="text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Eliminar
+                        </button>
+                      </>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
