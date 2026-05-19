@@ -23,6 +23,9 @@ export default function Sidebar() {
         <NavLink to="/notificaciones" className={linkClass}>
           🔔 Notificaciones
         </NavLink>
+        <NavLink to="/ubicaciones" className={linkClass}>
+          📍 Ubicaciones
+        </NavLink>
         <NavLink to="/solicitudes" className={linkClass}>
           Solicitudes
         </NavLink>
