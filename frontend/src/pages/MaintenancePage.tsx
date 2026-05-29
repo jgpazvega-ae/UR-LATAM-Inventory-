@@ -8,16 +8,16 @@ import { useNotification } from '../contexts/NotificationContext'
 type TabType = 'proximos' | 'vencidos' | 'historial' | 'crear'
 
 const colorPorTipo: Record<string, string> = {
-  Preventivo: 'bg-blue-50 border-blue-200',
-  Correctivo: 'bg-red-50 border-red-200',
-  Inspección: 'bg-yellow-50 border-yellow-200',
+  Preventivo: 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100',
+  Correctivo: 'bg-gradient-to-br from-red-50 to-rose-50 border-red-100',
+  Inspección: 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-100',
 }
 
 const colorPorEstado: Record<string, string> = {
-  Pendiente: 'bg-orange-100 text-orange-800',
-  'En Progreso': 'bg-blue-100 text-blue-800',
-  Completado: 'bg-green-100 text-green-800',
-  Cancelado: 'bg-gray-100 text-gray-800',
+  Pendiente: 'badge-warning',
+  'En Progreso': 'badge-info',
+  Completado: 'badge-success',
+  Cancelado: 'badge-error',
 }
 
 export default function MaintenancePage() {
@@ -135,107 +135,101 @@ export default function MaintenancePage() {
 
   const displayedMantenimientos = filtrarPorTab()
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Cargando mantenimientos...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">🔧 Gestión de Mantenimiento</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-4xl font-bold gradient-text-primary">Mantenimiento</h1>
+          <p className="text-gray-600 mt-3 font-medium">
             Programa y controla el mantenimiento preventivo de robots
           </p>
         </div>
         {isAdmin && (
           <button
             onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+            className="btn-primary shadow-lg"
           >
-            + Nuevo Mantenimiento
+            <span>+</span> Nuevo Mantenimiento
           </button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <div className="text-sm text-orange-600 font-medium">Vencidos/Atrasados</div>
-          <div className="text-3xl font-bold text-orange-700 mt-2">{vencidos.length}</div>
-          <p className="text-xs text-orange-600 mt-1">Requieren atención inmediata</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="card-premium bg-gradient-to-br from-orange-50 to-red-50 p-6 border-l-4 border-orange-500">
+          <div className="text-2xl mb-2">⚠️</div>
+          <p className="text-sm text-orange-700 font-bold uppercase">Vencidos/Atrasados</p>
+          <p className="text-3xl font-bold text-orange-700 mt-2">{vencidos.length}</p>
+          <p className="text-xs text-orange-600 mt-2">Requieren atención inmediata</p>
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="text-sm text-blue-600 font-medium">Programados</div>
-          <div className="text-3xl font-bold text-blue-700 mt-2">
+        <div className="card-premium bg-gradient-to-br from-blue-50 to-cyan-50 p-6 border-l-4 border-blue-500">
+          <div className="text-2xl mb-2">📅</div>
+          <p className="text-sm text-blue-700 font-bold uppercase">Programados</p>
+          <p className="text-3xl font-bold text-blue-700 mt-2">
             {mantenimientos.filter((m) => m.estado === 'Pendiente' || m.estado === 'En Progreso')
               .length}
-          </div>
-          <p className="text-xs text-blue-600 mt-1">Próximos en programación</p>
+          </p>
+          <p className="text-xs text-blue-600 mt-2">Próximos en programación</p>
         </div>
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="text-sm text-green-600 font-medium">Completados (30d)</div>
-          <div className="text-3xl font-bold text-green-700 mt-2">
+        <div className="card-premium bg-gradient-to-br from-green-50 to-emerald-50 p-6 border-l-4 border-green-500">
+          <div className="text-2xl mb-2">✅</div>
+          <p className="text-sm text-green-700 font-bold uppercase">Completados (30d)</p>
+          <p className="text-3xl font-bold text-green-700 mt-2">
             {mantenimientos.filter((m) => m.estado === 'Completado').length}
+          </p>
+          <p className="text-xs text-green-600 mt-2">Historial reciente</p>
+        </div>
+      </div>
+
+      <div className="card-premium">
+        <div className="flex gap-2 border-b border-gray-200 p-4">
+          {[
+            { key: 'proximos', label: '📅 Próximos', active: activeTab === 'proximos' },
+            ...(vencidos.length > 0 ? [{ key: 'vencidos', label: `⚠️ Vencidos (${vencidos.length})`, active: activeTab === 'vencidos' }] : []),
+            { key: 'historial', label: '✅ Completados', active: activeTab === 'historial' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as TabType)}
+              className={`px-4 py-2 font-semibold border-b-2 transition-all ${
+                tab.active
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {displayedMantenimientos.length === 0 ? (
+          <div className="p-12 text-center">
+            <p className="text-gray-600 font-medium text-lg">No hay mantenimientos en esta categoría</p>
           </div>
-          <p className="text-xs text-green-600 mt-1">Historial reciente</p>
-        </div>
-      </div>
-
-      <div className="flex gap-2 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('proximos')}
-          className={`px-4 py-2 font-medium border-b-2 transition ${
-            activeTab === 'proximos'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          📅 Próximos
-        </button>
-        {vencidos.length > 0 && (
-          <button
-            onClick={() => setActiveTab('vencidos')}
-            className={`px-4 py-2 font-medium border-b-2 transition ${
-              activeTab === 'vencidos'
-                ? 'border-red-600 text-red-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            ⚠️ Vencidos ({vencidos.length})
-          </button>
-        )}
-        <button
-          onClick={() => setActiveTab('historial')}
-          className={`px-4 py-2 font-medium border-b-2 transition ${
-            activeTab === 'historial'
-              ? 'border-green-600 text-green-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          ✅ Completados
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-8">Cargando mantenimientos...</div>
-      ) : displayedMantenimientos.length === 0 ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-          <p className="text-gray-600">No hay mantenimientos en esta categoría</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {displayedMantenimientos.map((mant) => {
-            const robot = getRobotInfo(mant.robotId)
-            return (
-              <div
-                key={mant.id}
-                className={`rounded-lg border-2 p-6 ${colorPorTipo[mant.tipo]}`}
-              >
+        ) : (
+          <div className="p-6 space-y-4">
+            {displayedMantenimientos.map((mant) => {
+              const robot = getRobotInfo(mant.robotId)
+              return (
+                <div
+                  key={mant.id}
+                  className={`card-premium border-l-4 p-6 ${colorPorTipo[mant.tipo]}`}
+                >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-3">
                       <h3 className="font-bold text-lg text-gray-900">{mant.tipo}</h3>
-                      <span
-                        className={`text-xs px-2 py-1 rounded font-medium ${
-                          colorPorEstado[mant.estado]
-                        }`}
-                      >
+                      <span className={colorPorEstado[mant.estado]}>
                         {mant.estado}
                       </span>
                     </div>
@@ -325,23 +319,26 @@ export default function MaintenancePage() {
                   </div>
                 )}
               </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {showModal && isAdmin && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Nuevo Mantenimiento</h2>
+        <div className="modal-overlay p-4">
+          <div className="modal-content w-full max-w-lg">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 border-b border-blue-100">
+              <h2 className="text-2xl font-bold gradient-text-primary">🔧 Nuevo Mantenimiento</h2>
+            </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Robot</label>
+            <div className="p-8 space-y-5">
+              <div className="form-group">
+                <label className="form-label">Robot *</label>
                 <select
                   value={formData.robotId}
                   onChange={(e) => setFormData({ ...formData, robotId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="input-field"
                 >
                   <option value="">Selecciona un robot</option>
                   {robots.map((r) => (
@@ -352,103 +349,105 @@ export default function MaintenancePage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                <select
-                  value={formData.tipo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tipo: e.target.value as any })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option>Preventivo</option>
-                  <option>Correctivo</option>
-                  <option>Inspección</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="form-group">
+                  <label className="form-label">Tipo *</label>
+                  <select
+                    value={formData.tipo}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tipo: e.target.value as any })
+                    }
+                    className="input-field"
+                  >
+                    <option>Preventivo</option>
+                    <option>Correctivo</option>
+                    <option>Inspección</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Fecha Programada *</label>
+                  <input
+                    type="datetime-local"
+                    value={formData.fechaProgramada}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fechaProgramada: e.target.value })
+                    }
+                    className="input-field"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Descripción
-                </label>
+              <div className="form-group">
+                <label className="form-label">Descripción</label>
                 <textarea
                   value={formData.descripcion}
                   onChange={(e) =>
                     setFormData({ ...formData, descripcion: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="input-field"
                   rows={3}
                   placeholder="Describe el mantenimiento a realizar"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fecha Programada
-                </label>
-                <input
-                  type="datetime-local"
-                  value={formData.fechaProgramada}
-                  onChange={(e) =>
-                    setFormData({ ...formData, fechaProgramada: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-bold text-gray-700 uppercase mb-4">Técnico Responsable</h3>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Técnico Responsable
-                </label>
-                <input
-                  type="text"
-                  value={formData.tecnicoNombre}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tecnicoNombre: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="Nombre del técnico"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <div className="form-group">
+                  <label className="form-label">Nombre</label>
                   <input
-                    type="email"
-                    value={formData.tecnicoEmail}
+                    type="text"
+                    value={formData.tecnicoNombre}
                     onChange={(e) =>
-                      setFormData({ ...formData, tecnicoEmail: e.target.value })
+                      setFormData({ ...formData, tecnicoNombre: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="input-field"
+                    placeholder="Nombre del técnico"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                  <input
-                    type="tel"
-                    value={formData.tecnicoTelefono}
-                    onChange={(e) =>
-                      setFormData({ ...formData, tecnicoTelefono: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label className="form-label">Email</label>
+                    <input
+                      type="email"
+                      value={formData.tecnicoEmail}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tecnicoEmail: e.target.value })
+                      }
+                      className="input-field"
+                      placeholder="tecnico@empresa.com"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Teléfono</label>
+                    <input
+                      type="tel"
+                      value={formData.tecnicoTelefono}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tecnicoTelefono: e.target.value })
+                      }
+                      className="input-field"
+                      placeholder="+55 1234 5678"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end mt-6">
+            <div className="flex gap-3 justify-end p-6 border-t border-gray-200 bg-gray-50">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded transition"
+                className="btn-secondary"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleCrearMantenimiento}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+                className="btn-primary"
               >
-                Crear Mantenimiento
+                💾 Crear Mantenimiento
               </button>
             </div>
           </div>
