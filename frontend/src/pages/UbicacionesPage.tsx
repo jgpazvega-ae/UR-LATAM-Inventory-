@@ -15,11 +15,19 @@ const iconoPorTipo = {
 };
 
 const colorPorTipo: Record<TipoUbicacion, string> = {
-  Oficina: 'bg-blue-50 border-blue-200',
-  Cliente: 'bg-green-50 border-green-200',
-  Almacén: 'bg-yellow-50 border-yellow-200',
-  Taller: 'bg-orange-50 border-orange-200',
-  Otro: 'bg-gray-50 border-gray-200',
+  Oficina: 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100',
+  Cliente: 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-100',
+  Almacén: 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-100',
+  Taller: 'bg-gradient-to-br from-orange-50 to-red-50 border-orange-100',
+  Otro: 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-100',
+};
+
+const accentPorTipo: Record<TipoUbicacion, string> = {
+  Oficina: 'text-blue-600 bg-blue-100',
+  Cliente: 'text-green-600 bg-green-100',
+  Almacén: 'text-yellow-600 bg-yellow-100',
+  Taller: 'text-orange-600 bg-orange-100',
+  Otro: 'text-gray-600 bg-gray-100',
 };
 
 export default function UbicacionesPage() {
@@ -130,174 +138,175 @@ export default function UbicacionesPage() {
   }
 
   if (loading) {
-    return <div className="text-center py-8">Cargando ubicaciones...</div>
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Cargando ubicaciones...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">📍 Ubicaciones de Robots</h1>
-          <p className="text-gray-600 mt-1">Gestiona todas las ubicaciones y visualiza dónde están los robots</p>
+          <h1 className="text-4xl font-bold gradient-text-primary">Ubicaciones</h1>
+          <p className="text-gray-600 mt-3 font-medium">Gestiona todas las ubicaciones y visualiza dónde están los robots</p>
         </div>
         {isAdmin && (
           <button
             onClick={() => handleOpenModal()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+            className="btn-primary shadow-lg"
           >
-            + Nueva Ubicación
+            <span>+</span> Nueva Ubicación
           </button>
         )}
       </div>
 
-      {/* Filtros */}
+      {/* Filter Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <button
-          onClick={() => setFiltro('todas')}
-          className={`p-3 rounded-lg border-2 transition ${
-            filtro === 'todas' ? 'border-gray-400 bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'
-          }`}
-        >
-          <div className="text-2xl font-bold text-gray-900">{ubicaciones.length}</div>
-          <div className="text-xs text-gray-500 mt-1">Total</div>
-        </button>
-        <button
-          onClick={() => setFiltro('activas')}
-          className={`p-3 rounded-lg border-2 transition ${
-            filtro === 'activas' ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white hover:border-gray-300'
-          }`}
-        >
-          <div className="text-2xl font-bold text-green-700">{ubicaciones.filter((u) => u.estado === 'Activa').length}</div>
-          <div className="text-xs text-gray-500 mt-1">Activas</div>
-        </button>
-        <button
-          onClick={() => setFiltro('inactivas')}
-          className={`p-3 rounded-lg border-2 transition ${
-            filtro === 'inactivas' ? 'border-orange-400 bg-orange-50' : 'border-gray-200 bg-white hover:border-gray-300'
-          }`}
-        >
-          <div className="text-2xl font-bold text-orange-700">{ubicaciones.filter((u) => u.estado !== 'Activa').length}</div>
-          <div className="text-xs text-gray-500 mt-1">Inactivas</div>
-        </button>
+        {[
+          { key: 'todas', label: 'Total', count: ubicaciones.length, icon: '📍' },
+          { key: 'activas', label: 'Activas', count: ubicaciones.filter((u) => u.estado === 'Activa').length, icon: '✅' },
+          { key: 'inactivas', label: 'Inactivas', count: ubicaciones.filter((u) => u.estado !== 'Activa').length, icon: '❌' },
+        ].map(f => (
+          <button
+            key={f.key}
+            onClick={() => setFiltro(f.key as any)}
+            className={`card-premium p-4 transition-all duration-300 hover:scale-102 ${
+              filtro === f.key ? 'ring-2 ring-blue-500 shadow-lg' : ''
+            }`}
+          >
+            <div className="text-2xl mb-2">{f.icon}</div>
+            <div className="text-3xl font-bold text-gray-900">{f.count}</div>
+            <div className="text-xs text-gray-600 mt-2 font-semibold">{f.label}</div>
+          </button>
+        ))}
       </div>
 
       {/* Grid de Ubicaciones */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ubicacionesFiltradas.map((ubicacion) => {
-          const robotsEnUbicacion = getRobotsEnUbicacion(ubicacion.id)
-          return (
-            <div
-              key={ubicacion.id}
-              className={`rounded-lg border-2 p-6 transition hover:shadow-lg cursor-pointer ${colorPorTipo[ubicacion.tipo]}`}
-              onClick={() => navigate(`/robots?ubicacion=${ubicacion.id}`)}
+      {ubicacionesFiltradas.length === 0 ? (
+        <div className="card-premium p-12 text-center">
+          <div className="text-5xl mb-4">📭</div>
+          <p className="text-gray-600 font-medium mb-4">No hay ubicaciones disponibles</p>
+          {isAdmin && (
+            <button
+              onClick={() => handleOpenModal()}
+              className="btn-primary"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="text-3xl mb-2">{iconoPorTipo[ubicacion.tipo]}</div>
-                  <h3 className="text-lg font-semibold text-gray-900">{ubicacion.nombre}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{ubicacion.tipo}</p>
-                </div>
-                <div className={`px-3 py-1 rounded text-xs font-medium ${
-                  ubicacion.estado === 'Activa' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {ubicacion.estado}
-                </div>
-              </div>
-
-              <div className="space-y-2 mb-4 text-sm text-gray-700">
-                <p>📍 {ubicacion.direccion}</p>
-                <p>🏙️ {ubicacion.ciudad}</p>
-                <p>📞 {ubicacion.contacto.telefono}</p>
-              </div>
-
-              <div className="pt-4 border-t border-gray-300">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-semibold text-gray-700">Robots en ubicación</span>
-                  <span className="text-xl font-bold text-teradyne-secondary">{robotsEnUbicacion.length}</span>
-                </div>
-
-                {robotsEnUbicacion.length > 0 ? (
-                  <div className="space-y-2">
-                    {robotsEnUbicacion.slice(0, 3).map((robot) => (
-                      <div key={robot.id} className="text-xs bg-white bg-opacity-50 p-2 rounded flex items-center gap-2">
-                        <span>🤖</span>
-                        <span className="font-mono font-semibold">{robot.numeroSerie}</span>
-                        <span className="text-gray-500 flex-1">{robot.modelo}</span>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          robot.estado === 'EN_PRESTAMO' ? 'bg-blue-100 text-blue-800' :
-                          robot.estado === 'DISPONIBLE' ? 'bg-green-100 text-green-800' :
-                          'bg-orange-100 text-orange-800'
-                        }`}>
-                          {robot.estado}
-                        </span>
-                      </div>
-                    ))}
-                    {robotsEnUbicacion.length > 3 && (
-                      <p className="text-xs text-gray-500 p-2">+{robotsEnUbicacion.length - 3} más...</p>
-                    )}
+              + Crear primera ubicación
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {ubicacionesFiltradas.map((ubicacion) => {
+            const robotsEnUbicacion = getRobotsEnUbicacion(ubicacion.id)
+            return (
+              <div
+                key={ubicacion.id}
+                className={`card-premium p-6 cursor-pointer transition-all hover:shadow-premium-lg ${colorPorTipo[ubicacion.tipo]}`}
+                onClick={() => navigate(`/robots?ubicacion=${ubicacion.id}`)}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="text-4xl mb-2">{iconoPorTipo[ubicacion.tipo]}</div>
+                    <h3 className="text-lg font-bold text-gray-900">{ubicacion.nombre}</h3>
+                    <p className="text-sm text-gray-600 mt-1 font-semibold">{ubicacion.tipo}</p>
                   </div>
-                ) : (
-                  <p className="text-sm text-gray-500 italic">Sin robots en esta ubicación</p>
-                )}
-              </div>
+                  <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                    ubicacion.estado === 'Activa' ? 'badge-success' : 'badge-error'
+                  }`}>
+                    {ubicacion.estado}
+                  </div>
+                </div>
 
-              {isAdmin && (
-                <div className="mt-4 flex gap-2">
+                <div className="space-y-2 mb-4 text-sm text-gray-700 border-b border-gray-200 pb-4">
+                  <p className="flex items-center gap-2"><span>📍</span> {ubicacion.direccion}</p>
+                  <p className="flex items-center gap-2"><span>🏙️</span> {ubicacion.ciudad}</p>
+                  <p className="flex items-center gap-2"><span>📞</span> {ubicacion.contacto.telefono}</p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-gray-700">Robots</span>
+                    <span className={`text-xl font-bold ${accentPorTipo[ubicacion.tipo]} px-3 py-1 rounded-lg`}>
+                      {robotsEnUbicacion.length}
+                    </span>
+                  </div>
+
+                  {robotsEnUbicacion.length > 0 ? (
+                    <div className="space-y-2">
+                      {robotsEnUbicacion.slice(0, 3).map((robot) => (
+                        <div key={robot.id} className="text-xs bg-white/60 p-2.5 rounded-lg flex items-center gap-2 hover:bg-white transition">
+                          <span>🤖</span>
+                          <span className="font-mono font-semibold text-blue-600">{robot.numeroSerie}</span>
+                          <span className="text-gray-500 flex-1 text-xs">{robot.modelo}</span>
+                          <span className={`text-xs px-2 py-1 rounded font-medium ${
+                            robot.estado === 'EN_PRESTAMO' ? 'badge-info' :
+                            robot.estado === 'DISPONIBLE' ? 'badge-success' :
+                            'badge-warning'
+                          }`}>
+                            {robot.estado.replace('_', ' ')}
+                          </span>
+                        </div>
+                      ))}
+                      {robotsEnUbicacion.length > 3 && (
+                        <p className="text-xs text-gray-500 font-medium p-2 text-center">+{robotsEnUbicacion.length - 3} más...</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic text-center py-2">Sin robots aquí</p>
+                  )}
+                </div>
+
+                {isAdmin && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       handleOpenModal(ubicacion)
                     }}
-                    className="flex-1 px-3 py-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 rounded transition"
+                    className="w-full mt-4 btn-secondary"
                   >
-                    Editar
+                    ✏️ Editar
                   </button>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {ubicacionesFiltradas.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No hay ubicaciones disponibles</p>
-          {isAdmin && (
-            <button
-              onClick={() => handleOpenModal()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
-            >
-              Crear primera ubicación
-            </button>
-          )}
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              {editando ? 'Editar Ubicación' : 'Nueva Ubicación'}
-            </h2>
+        <div className="modal-overlay p-4">
+          <div className="modal-content w-full max-w-lg">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 border-b border-blue-100">
+              <h2 className="text-2xl font-bold gradient-text-primary">
+                {editando ? '✏️ Editar Ubicación' : '📍 Nueva Ubicación'}
+              </h2>
+            </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+            <div className="p-8 space-y-5">
+              <div className="form-group">
+                <label className="form-label">Nombre</label>
                 <input
                   type="text"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="input-field"
+                  placeholder="Oficina Central"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+              <div className="form-group">
+                <label className="form-label">Tipo</label>
                 <select
                   value={formData.tipo}
                   onChange={(e) => setFormData({ ...formData, tipo: e.target.value as TipoUbicacion })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="input-field"
                 >
                   <option>Oficina</option>
                   <option>Cliente</option>
@@ -307,69 +316,82 @@ export default function UbicacionesPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-                <input
-                  type="text"
-                  value={formData.direccion}
-                  onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="form-group">
+                  <label className="form-label">Dirección</label>
+                  <input
+                    type="text"
+                    value={formData.direccion}
+                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                    className="input-field"
+                    placeholder="Calle 123"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Ciudad</label>
+                  <input
+                    type="text"
+                    value={formData.ciudad}
+                    onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
+                    className="input-field"
+                    placeholder="México"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
-                <input
-                  type="text"
-                  value={formData.ciudad}
-                  onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-bold text-gray-700 uppercase mb-4">Contacto</h3>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contacto (Nombre)</label>
-                <input
-                  type="text"
-                  value={formData.contactoNombre}
-                  onChange={(e) => setFormData({ ...formData, contactoNombre: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Nombre Contacto</label>
+                  <input
+                    type="text"
+                    value={formData.contactoNombre}
+                    onChange={(e) => setFormData({ ...formData, contactoNombre: e.target.value })}
+                    className="input-field"
+                    placeholder="Juan García"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={formData.contactoEmail}
-                  onChange={(e) => setFormData({ ...formData, contactoEmail: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label className="form-label">Email</label>
+                    <input
+                      type="email"
+                      value={formData.contactoEmail}
+                      onChange={(e) => setFormData({ ...formData, contactoEmail: e.target.value })}
+                      className="input-field"
+                      placeholder="juan@empresa.com"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                <input
-                  type="tel"
-                  value={formData.contactoTelefono}
-                  onChange={(e) => setFormData({ ...formData, contactoTelefono: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                />
+                  <div className="form-group">
+                    <label className="form-label">Teléfono</label>
+                    <input
+                      type="tel"
+                      value={formData.contactoTelefono}
+                      onChange={(e) => setFormData({ ...formData, contactoTelefono: e.target.value })}
+                      className="input-field"
+                      placeholder="+55 1234 5678"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end mt-6">
+            <div className="flex gap-3 justify-end p-6 border-t border-gray-200 bg-gray-50">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded transition"
+                className="btn-secondary"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+                className="btn-primary"
               >
-                Guardar
+                💾 Guardar
               </button>
             </div>
           </div>
