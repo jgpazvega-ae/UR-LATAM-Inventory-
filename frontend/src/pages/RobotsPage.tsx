@@ -8,10 +8,10 @@ import { useNotification } from '../contexts/NotificationContext'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
 
 const estadoBadge: Record<string, string> = {
-  DISPONIBLE: 'bg-green-100 text-green-800',
-  EN_PRESTAMO: 'bg-blue-100 text-blue-800',
-  MANTENIMIENTO: 'bg-orange-100 text-orange-800',
-  RETIRADO: 'bg-gray-100 text-gray-800',
+  DISPONIBLE: 'badge-success',
+  EN_PRESTAMO: 'badge-info',
+  MANTENIMIENTO: 'badge-warning',
+  RETIRADO: 'badge-error',
 }
 
 export default function RobotsPage() {
@@ -118,106 +118,126 @@ export default function RobotsPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Cargando robots...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 animate-fadeIn">
+      <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Inventario de Robots</h1>
-          <p className="text-gray-600 mt-1">{robots.length} robots en el sistema</p>
+          <h1 className="text-4xl font-bold gradient-text-primary">Inventario de Robots</h1>
+          <p className="text-gray-600 mt-3 font-medium">
+            <span className="text-lg font-bold text-gray-900">{robots.length}</span> robots en el sistema
+          </p>
         </div>
         {puedeEditar && (
           <button
             onClick={() => { setEditing(null); setShowModal(true) }}
-            className="bg-teradyne-secondary hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition"
+            className="btn-primary shadow-lg"
           >
-            + Nuevo Robot
+            <span>+</span> Nuevo Robot
           </button>
         )}
       </div>
 
-      <div className="flex gap-4 flex-wrap">
-        <select
-          value={filtroFamilia}
-          onChange={(e) => setFiltroFamilia(e.target.value)}
-          className="px-3 py-2 border rounded bg-white"
-        >
-          <option value="">Todas las familias</option>
-          {familias.map(f => <option key={f.id} value={f.id}>{f.nombreFamilia}</option>)}
-        </select>
-        <select
-          value={filtroEstado}
-          onChange={(e) => setFiltroEstado(e.target.value)}
-          className="px-3 py-2 border rounded bg-white"
-        >
-          <option value="">Todos los estados</option>
-          <option value="DISPONIBLE">Disponibles</option>
-          <option value="EN_PRESTAMO">En Préstamo</option>
-          <option value="MANTENIMIENTO">Mantenimiento</option>
-          <option value="RETIRADO">Retirados</option>
-        </select>
-      </div>
+      <div className="card-premium">
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 border-b border-blue-100 flex flex-wrap gap-4 items-center">
+          <div className="flex-1 min-w-xs">
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Familia</label>
+            <select
+              value={filtroFamilia}
+              onChange={(e) => setFiltroFamilia(e.target.value)}
+              className="input-field"
+            >
+              <option value="">Todas las familias</option>
+              {familias.map(f => <option key={f.id} value={f.id}>{f.nombreFamilia}</option>)}
+            </select>
+          </div>
+          <div className="flex-1 min-w-xs">
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Estado</label>
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="input-field"
+            >
+              <option value="">Todos los estados</option>
+              <option value="DISPONIBLE">✅ Disponibles</option>
+              <option value="EN_PRESTAMO">🤖 En Préstamo</option>
+              <option value="MANTENIMIENTO">🔧 Mantenimiento</option>
+              <option value="RETIRADO">📦 Retirados</option>
+            </select>
+          </div>
+        </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-gray-500">Cargando...</div>
-        ) : robots.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No hay robots registrados.
-            {puedeEditar && <div className="mt-2 text-sm">Crea uno nuevo con el botón de arriba.</div>}
+        {robots.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="text-5xl mb-4">🤖</div>
+            <p className="text-gray-600 font-medium mb-2">No hay robots registrados</p>
+            {puedeEditar && <p className="text-sm text-gray-500">Crea uno nuevo con el botón de arriba</p>}
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">N° Serie</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Modelo</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Familia</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Ubicación</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Estado</th>
-                <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {robots.map(r => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-mono font-semibold text-gray-900">{r.numeroSerie}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{r.modelo || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{r.familia?.nombreFamilia}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{getNombreUbicacion(r.ubicacionActual)}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${estadoBadge[r.estado]}`}>
-                      {r.estado.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm space-x-2">
-                    <button
-                      onClick={() => navigate(`/robots/${r.id}/movements`)}
-                      className="text-purple-600 hover:text-purple-800 font-medium"
-                      title="Ver historial de movimientos"
-                    >
-                      📊 Historial
-                    </button>
-                    {puedeEditar && (
-                      <>
-                        <button
-                          onClick={() => { setEditing(r); setShowModal(true) }}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleEliminar(r.id)}
-                          className="text-red-600 hover:text-red-800 font-medium"
-                        >
-                          Eliminar
-                        </button>
-                      </>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="table-premium">
+              <thead>
+                <tr>
+                  <th>N° Serie</th>
+                  <th>Modelo</th>
+                  <th>Familia</th>
+                  <th>Ubicación</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {robots.map(r => (
+                  <tr key={r.id}>
+                    <td className="font-mono font-bold text-blue-700">{r.numeroSerie}</td>
+                    <td className="font-medium text-gray-900">{r.modelo || '-'}</td>
+                    <td className="text-gray-700">{r.familia?.nombreFamilia}</td>
+                    <td className="text-gray-700">{getNombreUbicacion(r.ubicacionActual)}</td>
+                    <td>
+                      <span className={estadoBadge[r.estado]}>
+                        {r.estado.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="text-right text-sm space-x-3">
+                      <button
+                        onClick={() => navigate(`/robots/${r.id}/movements`)}
+                        className="btn-ghost text-purple-600 hover:text-purple-700"
+                        title="Ver historial de movimientos"
+                      >
+                        📊
+                      </button>
+                      {puedeEditar && (
+                        <>
+                          <button
+                            onClick={() => { setEditing(r); setShowModal(true) }}
+                            className="btn-ghost text-blue-600 hover:text-blue-700"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleEliminar(r.id)}
+                            className="btn-ghost text-red-600 hover:text-red-700"
+                          >
+                            🗑️
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -255,46 +275,44 @@ function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: a
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">
-            {robot?.id ? 'Editar Robot' : 'Nuevo Robot'}
+    <div className="modal-overlay flex items-center justify-center p-4">
+      <div className="modal-content w-full max-w-lg">
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 border-b border-blue-100">
+          <h2 className="text-2xl font-bold gradient-text-primary">
+            {robot?.id ? '✏️ Editar Robot' : '🤖 Nuevo Robot'}
           </h2>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Número de Serie *
-            </label>
+            <label className="form-label">Número de Serie *</label>
             <input
               type="text"
               value={form.numeroSerie}
               onChange={(e) => setForm({ ...form, numeroSerie: e.target.value })}
               required
               disabled={!!robot?.id}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none disabled:bg-gray-100"
+              className="input-field disabled:bg-gray-50 disabled:cursor-not-allowed"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+            <div className="form-group">
+              <label className="form-label">Modelo</label>
               <input
                 type="text"
                 value={form.modelo}
                 onChange={(e) => setForm({ ...form, modelo: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                className="input-field"
                 placeholder="UR10e"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Familia *</label>
+            <div className="form-group">
+              <label className="form-label">Familia *</label>
               <select
                 value={form.familiaId}
                 onChange={(e) => setForm({ ...form, familiaId: e.target.value })}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                className="input-field"
               >
                 <option value="">Selecciona familia</option>
                 {familias.map((f: any) => (
@@ -305,25 +323,25 @@ function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: a
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+            <div className="form-group">
+              <label className="form-label">Estado</label>
               <select
                 value={form.estado}
                 onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                className="input-field"
               >
-                <option value="DISPONIBLE">Disponible</option>
-                <option value="EN_PRESTAMO">En Préstamo</option>
-                <option value="MANTENIMIENTO">Mantenimiento</option>
-                <option value="RETIRADO">Retirado</option>
+                <option value="DISPONIBLE">✅ Disponible</option>
+                <option value="EN_PRESTAMO">🤖 En Préstamo</option>
+                <option value="MANTENIMIENTO">🔧 Mantenimiento</option>
+                <option value="RETIRADO">📦 Retirado</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
+            <div className="form-group">
+              <label className="form-label">Ubicación</label>
               <select
                 value={form.ubicacionActual}
                 onChange={(e) => setForm({ ...form, ubicacionActual: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                className="input-field"
               >
                 <option value="">Sin ubicación</option>
                 {(ubicaciones || []).map((u: any) => (
@@ -333,14 +351,14 @@ function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: a
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Región *</label>
+          <div className="form-group">
+            <label className="form-label">Región *</label>
             <select
               value={form.region}
               onChange={(e) => setForm({ ...form, region: e.target.value })}
               disabled={!!robot?.id}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none disabled:bg-gray-100"
+              className="input-field disabled:bg-gray-50 disabled:cursor-not-allowed"
             >
               <option value="">Selecciona región</option>
               <option value="MX">🇲🇽 México</option>
@@ -349,19 +367,19 @@ function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: a
             </select>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition"
+              className="btn-secondary"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-teradyne-secondary hover:bg-blue-600 text-white rounded font-medium transition"
+              className="btn-primary"
             >
-              {robot?.id ? 'Guardar' : 'Crear'}
+              {robot?.id ? '💾 Guardar' : '✨ Crear'}
             </button>
           </div>
         </form>
