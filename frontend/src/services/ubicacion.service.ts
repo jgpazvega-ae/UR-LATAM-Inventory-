@@ -163,10 +163,17 @@ class UbicacionServiceLocal {
     this.saveUbicaciones(filtered);
   }
 
-  async contarRobotsEnUbicacion(_ubicacionId: string): Promise<number> {
-    // Este método será utilizado por el robot service
-    // Por ahora retorna 0, se actualizará cuando integremos
-    return 0;
+  async contarRobotsEnUbicacion(ubicacionId: string): Promise<number> {
+    const stored = localStorage.getItem('robots-demo');
+    if (!stored) return 0;
+    try {
+      const robots = JSON.parse(stored);
+      if (!Array.isArray(robots)) return 0;
+      return robots.filter((r: any) => r && r.ubicacionActual === ubicacionId).length;
+    } catch (err) {
+      console.error('Error contando robots en ubicación:', err);
+      return 0;
+    }
   }
 }
 

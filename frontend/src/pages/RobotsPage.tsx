@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { robotService } from '../services/robot.service'
+import { ubicacionService, Ubicacion } from '../services/ubicacion.service'
+import { movimientoService } from '../services/movimiento.service'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotification } from '../contexts/NotificationContext'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
@@ -21,6 +23,7 @@ export default function RobotsPage() {
 
   const [robots, setRobots] = useState<any[]>([])
   const [familias, setFamilias] = useState<any[]>([])
+  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroFamilia, setFiltroFamilia] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
@@ -38,9 +41,10 @@ export default function RobotsPage() {
 
       console.log('Cargando robots con filtros:', filtros)
 
-      const [rs, fs] = await Promise.all([
+      const [rs, fs, ubs] = await Promise.all([
         robotService.listar(filtros),
         robotService.listarFamilias(),
+        ubicacionService.listar({ region: currentRegion as any }),
       ])
 
       console.log('Robots cargados:', rs.length, rs)
@@ -48,6 +52,7 @@ export default function RobotsPage() {
 
       setRobots(rs)
       setFamilias(fs)
+      setUbicaciones(ubs)
     } catch (err) {
       console.error(err)
       addNotification('Error al cargar robots', 'error')
@@ -63,7 +68,27 @@ export default function RobotsPage() {
   const handleGuardar = async (data: any) => {
     try {
       if (editing?.id) {
+        const ubicacionAnterior = editing.ubicacionActual || ''
         await robotService.actualizar(editing.id, data)
+
+        // Registrar movimiento de transferencia si cambió la ubicación
+        if (data.ubicacionActual && data.ubicacionActual !== ubicacionAnterior) {
+          const nombreDestino =
+            ubicaciones.find((u) => u.id === data.ubicacionActual)?.nombre || data.ubicacionActual
+          await movimientoService.registrar({
+            robotId: editing.id,
+            ubicacionOrigen: ubicacionAnterior,
+            ubicacionDestino: data.ubicacionActual,
+            tipo: 'Transferencia',
+            razon: `Transferencia a ${nombreDestino}`,
+            usuarioResponsable: {
+              id: user?.id || 'sistema',
+              nombreCompleto: user?.nombreCompleto || 'Sistema',
+              email: user?.email || '',
+            },
+            fechaMovimiento: new Date().toISOString(),
+          })
+        }
         addNotification('Robot actualizado', 'success')
       } else {
         await robotService.crear(data)
@@ -75,6 +100,11 @@ export default function RobotsPage() {
     } catch (err: any) {
       addNotification(err.message || 'Error al guardar', 'error')
     }
+  }
+
+  const getNombreUbicacion = (id?: string) => {
+    if (!id) return '-'
+    return ubicaciones.find((u) => u.id === id)?.nombre || id
   }
 
   const handleEliminar = async (id: string) => {
@@ -153,7 +183,7 @@ export default function RobotsPage() {
                   <td className="px-6 py-4 font-mono font-semibold text-gray-900">{r.numeroSerie}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{r.modelo || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{r.familia?.nombreFamilia}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{r.ubicacionActual || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{getNombreUbicacion(r.ubicacionActual)}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${estadoBadge[r.estado]}`}>
                       {r.estado.replace('_', ' ')}
@@ -195,6 +225,7 @@ export default function RobotsPage() {
         <RobotModal
           robot={editing}
           familias={familias}
+          ubicaciones={ubicaciones}
           region={currentRegion}
           onSave={handleGuardar}
           onClose={() => { setShowModal(false); setEditing(null) }}
@@ -204,7 +235,7 @@ export default function RobotsPage() {
   )
 }
 
-function RobotModal({ robot, familias, region, onSave, onClose }: any) {
+function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: any) {
   const [form, setForm] = useState({
     numeroSerie: robot?.numeroSerie || '',
     modelo: robot?.modelo || '',
@@ -289,13 +320,16 @@ function RobotModal({ robot, familias, region, onSave, onClose }: any) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
-              <input
-                type="text"
+              <select
                 value={form.ubicacionActual}
                 onChange={(e) => setForm({ ...form, ubicacionActual: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
-                placeholder="Almacén..."
-              />
+              >
+                <option value="">Sin ubicación</option>
+                {(ubicaciones || []).map((u: any) => (
+                  <option key={u.id} value={u.id}>{u.nombre}</option>
+                ))}
+              </select>
             </div>
           </div>
 

@@ -1,4 +1,48 @@
+import { movimientoService, TipoMovimiento } from './movimiento.service';
+
 const PRESTAMOS_INICIALES: any[] = [];
+
+// Registra un movimiento por cada robot involucrado en un evento del préstamo.
+// Lee la ubicación actual de cada robot desde localStorage para el origen/destino.
+const registrarMovimientosPrestamo = (
+  robotIds: string[],
+  tipo: TipoMovimiento,
+  razon: string,
+  usuario?: { id: string; nombreCompleto: string; email?: string }
+) => {
+  if (!robotIds || robotIds.length === 0) return;
+  let robotsPorId: Record<string, any> = {};
+  try {
+    const stored = localStorage.getItem('robots-demo');
+    if (stored) {
+      const robots = JSON.parse(stored);
+      if (Array.isArray(robots)) {
+        robotsPorId = Object.fromEntries(robots.map((r: any) => [r.id, r]));
+      }
+    }
+  } catch (err) {
+    console.error('Error leyendo robots para registrar movimiento:', err);
+  }
+
+  robotIds.forEach((robotId) => {
+    const ubicacion = robotsPorId[robotId]?.ubicacionActual || '';
+    movimientoService
+      .registrar({
+        robotId,
+        ubicacionOrigen: ubicacion,
+        ubicacionDestino: ubicacion,
+        tipo,
+        razon,
+        usuarioResponsable: {
+          id: usuario?.id || 'sistema',
+          nombreCompleto: usuario?.nombreCompleto || 'Sistema',
+          email: usuario?.email || '',
+        },
+        fechaMovimiento: new Date().toISOString(),
+      })
+      .catch((err) => console.error('Error registrando movimiento:', err));
+  });
+};
 
 // Detecta si un error es de cuota de localStorage
 const isQuotaError = (err: any): boolean => {
@@ -243,6 +287,14 @@ class PrestamoServiceLocal {
     // Actualizar robots a EN_PRESTAMO
     actualizarEstadoRobots(prestamos[index].robotIds || [], 'EN_PRESTAMO');
 
+    // Registrar movimiento de salida (préstamo)
+    registrarMovimientosPrestamo(
+      prestamos[index].robotIds || [],
+      'Préstamo',
+      `Salida por préstamo ${prestamos[index].numeroSolicitud || ''} · ${prestamos[index].usuarioSolicitante?.nombreCompleto || 'Solicitante'}`,
+      usuarioSalida
+    );
+
     return prestamos[index];
   }
 
@@ -275,6 +327,14 @@ class PrestamoServiceLocal {
 
       // Devolver robots a DISPONIBLE
       actualizarEstadoRobots(prestamos[index].robotIds || [], 'DISPONIBLE');
+
+      // Registrar movimiento de retorno
+      registrarMovimientosPrestamo(
+        prestamos[index].robotIds || [],
+        'Retorno',
+        `Retorno por recepción ${prestamos[index].numeroSolicitud || ''}`,
+        usuarioRecepcion
+      );
 
       console.log('✅ Recepción confirmada para préstamo:', id);
       return prestamos[index];

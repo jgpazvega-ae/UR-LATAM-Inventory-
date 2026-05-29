@@ -22,7 +22,7 @@ const FAMILIAS_INICIALES: Familia[] = [
   { id: '4', nombreFamilia: 'MIR', descripcion: 'Mobile Industrial Robots' },
 ];
 
-const ROBOTS_INICIALES: Robot[] = [
+const ROBOTS_BASE: Robot[] = [
   { id: '1', numeroSerie: '2017307415', modelo: 'UR10', familiaId: '1', estado: 'DISPONIBLE', region: 'MX' },
   { id: '2', numeroSerie: '2017304770', modelo: 'UR10', familiaId: '1', estado: 'DISPONIBLE', region: 'MX' },
   { id: '3', numeroSerie: '20205000857', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'MX' },
@@ -74,6 +74,20 @@ const ROBOTS_INICIALES: Robot[] = [
   { id: '49', numeroSerie: 'MC-250', modelo: 'MC 250', familiaId: '4', estado: 'DISPONIBLE', region: 'MX' },
 ];
 
+// Asigna una ubicación inicial coherente según el estado del robot.
+// Ubicaciones base: '1' Oficina Central, '2' Almacén, '3' Taller, '4' Cliente Volkswagen
+const asignarUbicacionInicial = (robots: Robot[]): Robot[] =>
+  robots.map((r, i) => {
+    if (r.ubicacionActual) return r;
+    let ubicacionActual = '1';
+    if (r.estado === 'MANTENIMIENTO') ubicacionActual = '3';
+    else if (r.estado === 'EN_PRESTAMO') ubicacionActual = '4';
+    else ubicacionActual = i % 2 === 0 ? '1' : '2';
+    return { ...r, ubicacionActual };
+  });
+
+const ROBOTS_INICIALES: Robot[] = asignarUbicacionInicial(ROBOTS_BASE);
+
 class RobotServiceLocal {
   private robotsKey = 'robots-demo';
   private familiasKey = 'familias-demo';
@@ -92,6 +106,13 @@ class RobotServiceLocal {
           localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
           console.log('✅ Robots reininicializados - Total:', ROBOTS_INICIALES.length);
           return ROBOTS_INICIALES;
+        }
+        // Migración: rellenar ubicacionActual en robots existentes que no la tengan
+        if (Array.isArray(parsed) && parsed.some((r: Robot) => !r.ubicacionActual)) {
+          const migrados = asignarUbicacionInicial(parsed);
+          localStorage.setItem(this.robotsKey, JSON.stringify(migrados));
+          console.log('🔄 Ubicaciones asignadas a robots existentes (migración)');
+          return migrados;
         }
         console.log(`📥 Robots cargados desde localStorage: ${parsed.length} robots`);
         return parsed;

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { robotService } from '../services/robot.service'
 import { prestamoService } from '../services/prestamo.service'
+import { ubicacionService, Ubicacion } from '../services/ubicacion.service'
 import { configuracionService } from '../services/configuracion.service'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -33,6 +34,7 @@ export default function NuevaSolicitudPage() {
   // Datos del wizard
   const [familias, setFamilias] = useState<any[]>([])
   const [robots, setRobots] = useState<any[]>([])
+  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [diasMin, setDiasMin] = useState(7)
 
   // Selecciones
@@ -52,11 +54,13 @@ export default function NuevaSolicitudPage() {
       try {
         console.log('📋 Cargando datos para nueva solicitud...');
 
-        const [fams, config, solicitudes] = await Promise.all([
+        const [fams, config, solicitudes, ubs] = await Promise.all([
           robotService.listarFamilias(),
           configuracionService.obtener(),
           prestamoService.listar({ estado: 'ACTIVO', usuario: 'mias' }),
+          ubicacionService.listar({ region: currentRegion as any }),
         ])
+        setUbicaciones(ubs || [])
 
         console.log('✅ Familias cargadas:', fams?.length || 0, fams);
         console.log('✅ Configuración:', config);
@@ -287,7 +291,7 @@ export default function NuevaSolicitudPage() {
                     >
                       <div>
                         <div className="font-semibold">{r.numeroSerie}</div>
-                        <div className="text-sm text-gray-500">{r.modelo} - {r.ubicacionActual || 'Sin ubicación'}</div>
+                        <div className="text-sm text-gray-500">{r.modelo} - {ubicaciones.find((u) => u.id === r.ubicacionActual)?.nombre || 'Sin ubicación'}</div>
                       </div>
                       <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                         seleccionado ? 'bg-teradyne-secondary border-teradyne-secondary text-white' : 'border-gray-300'
