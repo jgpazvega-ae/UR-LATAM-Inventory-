@@ -58,8 +58,22 @@ export default function MaintenancePage() {
       setRobots(robs)
       setMantenimientos(mants)
       setVencidos(venc)
+
+      if (venc.length > 0) {
+        addNotification(
+          `⚠️ Hay ${venc.length} mantenimiento${venc.length !== 1 ? 's' : ''} vencido${venc.length !== 1 ? 's' : ''}`,
+          'warning',
+          4000,
+          '⏰ Mantenimientos Vencidos'
+        )
+      }
     } catch (err: any) {
-      addNotification('Error al cargar mantenimientos', 'error')
+      addNotification(
+        'No se pudieron cargar los mantenimientos',
+        'error',
+        4000,
+        '❌ Error al Cargar'
+      )
       console.error(err)
     } finally {
       setLoading(false)
@@ -73,9 +87,17 @@ export default function MaintenancePage() {
   const handleCrearMantenimiento = async () => {
     try {
       if (!formData.robotId || !formData.fechaProgramada) {
-        addNotification('Robot y fecha son requeridos', 'error')
+        addNotification(
+          'Selecciona un robot y una fecha de programación',
+          'error',
+          3500,
+          '⚠️ Información Incompleta'
+        )
         return
       }
+
+      const robot = getRobotInfo(formData.robotId)
+      const fechaFormato = new Date(formData.fechaProgramada).toLocaleDateString('es-ES')
 
       await maintenanceService.crear({
         robotId: formData.robotId,
@@ -101,20 +123,43 @@ export default function MaintenancePage() {
         fechaProgramada: '',
         notas: '',
       })
-      addNotification('Mantenimiento creado exitosamente', 'success')
+      addNotification(
+        `Mantenimiento ${formData.tipo.toLowerCase()} programado para ${robot?.numeroSerie || 'robot'} el ${fechaFormato}`,
+        'success',
+        3000,
+        '🔧 Mantenimiento Programado'
+      )
       cargar()
     } catch (err: any) {
-      addNotification('Error al crear mantenimiento', 'error')
+      addNotification(
+        err.message || 'No se pudo crear el mantenimiento',
+        'error',
+        4000,
+        '❌ Error al Programar'
+      )
     }
   }
 
   const handleCompletarMantenimiento = async (id: string) => {
     try {
+      const mantenimiento = mantenimientos.find((m) => m.id === id)
+      const robot = getRobotInfo(mantenimiento?.robotId || '')
+
       await maintenanceService.completar(id)
-      addNotification('Mantenimiento marcado como completado', 'success')
+      addNotification(
+        `Mantenimiento completado para ${robot?.numeroSerie || 'robot'}. Robot disponible nuevamente`,
+        'success',
+        3000,
+        '✅ Mantenimiento Completado'
+      )
       cargar()
     } catch (err: any) {
-      addNotification('Error al completar mantenimiento', 'error')
+      addNotification(
+        err.message || 'No se pudo completar el mantenimiento',
+        'error',
+        4000,
+        '❌ Error al Completar'
+      )
     }
   }
 

@@ -56,7 +56,12 @@ export default function RobotsPage() {
       setUbicaciones(ubs)
     } catch (err) {
       console.error(err)
-      addNotification('Error al cargar robots', 'error')
+      addNotification(
+        'No se pudieron cargar los robots. Intenta nuevamente',
+        'error',
+        4000,
+        '❌ Error al Cargar'
+      )
     } finally {
       setLoading(false)
     }
@@ -120,13 +125,24 @@ export default function RobotsPage() {
   }
 
   const handleEliminar = async (id: string) => {
-    if (!confirm('¿Eliminar este robot? Esta acción no se puede deshacer.')) return
+    const robot = robots.find((r) => r.id === id)
+    if (!confirm(`¿Eliminar el robot ${robot?.numeroSerie}? Esta acción no se puede deshacer.`)) return
     try {
       await robotService.eliminar(id)
-      addNotification('Robot eliminado', 'success')
+      addNotification(
+        `Robot ${robot?.numeroSerie} eliminado del sistema`,
+        'success',
+        3000,
+        '✅ Robot Eliminado'
+      )
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al eliminar', 'error')
+      addNotification(
+        err.message || 'No se pudo eliminar el robot',
+        'error',
+        4000,
+        '❌ Error al Eliminar'
+      )
     }
   }
 

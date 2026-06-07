@@ -34,10 +34,15 @@ export default function SolicitudDetallePage() {
     setProcesando(true)
     try {
       await prestamoService.aprobar(id!, user ? { id: user.id, nombreCompleto: user.nombreCompleto } : undefined)
-      addNotification('Solicitud aprobada', 'success')
+      addNotification(
+        `Solicitud aprobada exitosamente para ${solicitud?.solicitante?.nombreCompleto || 'el usuario'}`,
+        'success',
+        3000,
+        '✅ Aprobación Confirmada'
+      )
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al aprobar', 'error')
+      addNotification(err.message || 'Error al aprobar solicitud', 'error', 4000, '❌ Error en Aprobación')
     } finally {
       setProcesando(false)
     }
@@ -45,18 +50,28 @@ export default function SolicitudDetallePage() {
 
   const handleRechazar = async () => {
     if (!motivoRechazo.trim() || motivoRechazo.length < 5) {
-      addNotification('Indica el motivo del rechazo (mínimo 5 caracteres)', 'warning')
+      addNotification(
+        'Proporciona el motivo del rechazo con al menos 5 caracteres',
+        'warning',
+        3500,
+        '⚠️ Información Incompleta'
+      )
       return
     }
     setProcesando(true)
     try {
       await prestamoService.rechazar(id!, motivoRechazo, user ? { id: user.id, nombreCompleto: user.nombreCompleto } : undefined)
-      addNotification('Solicitud rechazada', 'success')
+      addNotification(
+        `Solicitud rechazada. Se notificará a ${solicitud?.solicitante?.nombreCompleto || 'el solicitante'}`,
+        'success',
+        3000,
+        '✅ Rechazo Registrado'
+      )
       setShowRechazo(false)
       setMotivoRechazo('')
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al rechazar', 'error')
+      addNotification(err.message || 'Error al rechazar solicitud', 'error', 4000, '❌ Error en Rechazo')
     } finally {
       setProcesando(false)
     }
@@ -67,10 +82,16 @@ export default function SolicitudDetallePage() {
     setProcesando(true)
     try {
       await prestamoService.confirmarSalida(id!, user ? { id: user.id, nombreCompleto: user.nombreCompleto } : undefined)
-      addNotification('Salida confirmada - Robots en préstamo', 'success')
+      const cantRobots = solicitud?.robots?.length || 0
+      addNotification(
+        `${cantRobots} robot${cantRobots !== 1 ? 's' : ''} salió correctamente para ${solicitud?.solicitante?.nombreCompleto || 'el usuario'}`,
+        'success',
+        3000,
+        '🚀 Salida Confirmada'
+      )
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al confirmar salida', 'error')
+      addNotification(err.message || 'Error al confirmar salida de robots', 'error', 4000, '❌ Error en Salida')
     } finally {
       setProcesando(false)
     }
@@ -81,10 +102,16 @@ export default function SolicitudDetallePage() {
     setProcesando(true)
     try {
       await prestamoService.confirmarRecepcion(id!, user ? { id: user.id, nombreCompleto: user.nombreCompleto } : undefined)
-      addNotification('Recepción confirmada - Préstamo cerrado', 'success')
+      const cantRobots = solicitud?.robots?.length || 0
+      addNotification(
+        `${cantRobots} robot${cantRobots !== 1 ? 's' : ''} recibido${cantRobots !== 1 ? 's' : ''} correctamente. Préstamo completado`,
+        'success',
+        3000,
+        '✅ Préstamo Completado'
+      )
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al confirmar recepción', 'error')
+      addNotification(err.message || 'Error al confirmar recepción de robots', 'error', 4000, '❌ Error en Recepción')
     } finally {
       setProcesando(false)
     }
