@@ -39,7 +39,12 @@ export default function ConfiguracionPage() {
         })
       } catch (err) {
         console.error('Error cargando configuración:', err)
-        addNotification('Error al cargar configuración', 'error')
+        addNotification(
+          'No se pudo cargar la configuración del sistema',
+          'error',
+          4000,
+          '❌ Error al Cargar'
+        )
       } finally {
         setLoading(false)
       }
@@ -49,7 +54,12 @@ export default function ConfiguracionPage() {
 
   const guardar = async () => {
     if (!config.horariosArr || config.horariosArr.length === 0) {
-      addNotification('Debe tener al menos un horario de notificación', 'error')
+      addNotification(
+        'Debes configurar al menos un horario para las notificaciones',
+        'error',
+        3500,
+        '⚠️ Configuración Incompleta'
+      )
       return
     }
 
@@ -65,10 +75,20 @@ export default function ConfiguracionPage() {
         estadoSistema: config.estadoSistema,
       }
       await configuracionService.actualizar(configToSave)
-      addNotification('Configuración guardada correctamente', 'success')
+      addNotification(
+        `Configuración guardada. ${config.horariosArr.length} horario${config.horariosArr.length !== 1 ? 's' : ''} de notificación configurado${config.horariosArr.length !== 1 ? 's' : ''}`,
+        'success',
+        3000,
+        '⚙️ Configuración Guardada'
+      )
     } catch (err) {
       console.error('Error guardando:', err)
-      addNotification('Error al guardar configuración', 'error')
+      addNotification(
+        'No se pudo guardar la configuración del sistema',
+        'error',
+        4000,
+        '❌ Error al Guardar'
+      )
     } finally {
       setSaving(false)
     }
