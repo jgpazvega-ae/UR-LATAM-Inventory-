@@ -71,7 +71,7 @@ export default function RobotsPage() {
     cargar()
   }, [filtroFamilia, filtroEstado, currentRegion])
 
-  const handleGuardar = async (data: any, validationErrors?: Record<string, string>) => {
+  const handleGuardar = async (data: any) => {
     // Validar antes de enviar
     const validation = validateRobotForm(data)
     if (!validation.valid) {
@@ -305,7 +305,7 @@ function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: a
     }
 
     setSubmitting(true)
-    const result = await onSave(form, validation.errors)
+    const result = await onSave(form)
     setSubmitting(false)
 
     if (result?.validation && !result.validation.valid) {

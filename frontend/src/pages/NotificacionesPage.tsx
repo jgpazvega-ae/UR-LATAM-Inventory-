@@ -10,13 +10,6 @@ const iconoPorTipo = {
   info: 'ℹ️',
 };
 
-const colorCardsPorTipo = {
-  success: 'from-green-50 to-emerald-50 border-green-100',
-  error: 'from-red-50 to-rose-50 border-red-100',
-  warning: 'from-yellow-50 to-amber-50 border-yellow-100',
-  info: 'from-blue-50 to-cyan-50 border-blue-100',
-};
-
 const colorBadgePorTipo = {
   success: 'badge-success',
   error: 'badge-error',

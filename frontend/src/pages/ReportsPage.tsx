@@ -145,23 +145,6 @@ export default function ReportsPage() {
     }
   }
 
-  const getColorClass = (color: string) => {
-    switch (color) {
-      case 'blue':
-        return 'bg-blue-50 border-blue-200 hover:border-blue-400'
-      case 'green':
-        return 'bg-green-50 border-green-200 hover:border-green-400'
-      case 'purple':
-        return 'bg-purple-50 border-purple-200 hover:border-purple-400'
-      case 'orange':
-        return 'bg-orange-50 border-orange-200 hover:border-orange-400'
-      case 'red':
-        return 'bg-red-50 border-red-200 hover:border-red-400'
-      default:
-        return 'bg-gray-50 border-gray-200'
-    }
-  }
-
   const getTextColor = (color: string) => {
     switch (color) {
       case 'blue':

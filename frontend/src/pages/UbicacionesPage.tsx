@@ -117,7 +117,7 @@ export default function UbicacionesPage() {
     setShowModal(true)
   }
 
-  const handleSave = async (validationErrors?: Record<string, string>) => {
+  const handleSave = async () => {
     // Validar antes de enviar
     const validation = validateLocationForm(formData)
     setFormErrors(validation.errors)
