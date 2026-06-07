@@ -22,7 +22,7 @@ const FAMILIAS_INICIALES: Familia[] = [
   { id: '4', nombreFamilia: 'MIR', descripcion: 'Mobile Industrial Robots' },
 ];
 
-const ROBOTS_INICIALES: Robot[] = [
+const ROBOTS_BASE: Robot[] = [
   { id: '1', numeroSerie: '2017307415', modelo: 'UR10', familiaId: '1', estado: 'DISPONIBLE', region: 'MX' },
   { id: '2', numeroSerie: '2017304770', modelo: 'UR10', familiaId: '1', estado: 'DISPONIBLE', region: 'MX' },
   { id: '3', numeroSerie: '20205000857', modelo: 'UR10e', familiaId: '2', estado: 'DISPONIBLE', region: 'MX' },
@@ -74,6 +74,20 @@ const ROBOTS_INICIALES: Robot[] = [
   { id: '49', numeroSerie: 'MC-250', modelo: 'MC 250', familiaId: '4', estado: 'DISPONIBLE', region: 'MX' },
 ];
 
+// Asigna una ubicación inicial coherente según el estado del robot.
+// Ubicaciones base: '1' Oficina Central, '2' Almacén, '3' Taller, '4' Cliente Volkswagen
+const asignarUbicacionInicial = (robots: Robot[]): Robot[] =>
+  robots.map((r, i) => {
+    if (r.ubicacionActual) return r;
+    let ubicacionActual = '1';
+    if (r.estado === 'MANTENIMIENTO') ubicacionActual = '3';
+    else if (r.estado === 'EN_PRESTAMO') ubicacionActual = '4';
+    else ubicacionActual = i % 2 === 0 ? '1' : '2';
+    return { ...r, ubicacionActual };
+  });
+
+const ROBOTS_INICIALES: Robot[] = asignarUbicacionInicial(ROBOTS_BASE);
+
 class RobotServiceLocal {
   private robotsKey = 'robots-demo';
   private familiasKey = 'familias-demo';
@@ -87,19 +101,31 @@ class RobotServiceLocal {
         // Si hay menos de 40 robots o no tienen región, reinicializar
         if (parsed.length > 0 && (!parsed[0].region || parsed.length < 40)) {
           console.log('🔄 Reinicializando robots - datos incompletos detectados');
+          console.log(`   - Robots antes: ${parsed.length}, First robot region: ${parsed[0]?.region}`);
           localStorage.removeItem(this.robotsKey);
           localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
+          console.log('✅ Robots reininicializados - Total:', ROBOTS_INICIALES.length);
           return ROBOTS_INICIALES;
         }
+        // Migración: rellenar ubicacionActual en robots existentes que no la tengan
+        if (Array.isArray(parsed) && parsed.some((r: Robot) => !r.ubicacionActual)) {
+          const migrados = asignarUbicacionInicial(parsed);
+          localStorage.setItem(this.robotsKey, JSON.stringify(migrados));
+          console.log('🔄 Ubicaciones asignadas a robots existentes (migración)');
+          return migrados;
+        }
+        console.log(`📥 Robots cargados desde localStorage: ${parsed.length} robots`);
         return parsed;
       } catch (err) {
-        console.log('🔄 Error parseando robots - reinicializando');
+        console.log('🔄 Error parseando robots - reinicializando:', (err as any).message);
         localStorage.removeItem(this.robotsKey);
         localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
         return ROBOTS_INICIALES;
       }
     }
+    console.log('📥 Robots NO encontrados en localStorage - inicializando con ROBOTS_INICIALES...');
     localStorage.setItem(this.robotsKey, JSON.stringify(ROBOTS_INICIALES));
+    console.log('✅ ROBOTS_INICIALES almacenados - Total:', ROBOTS_INICIALES.length);
     return ROBOTS_INICIALES;
   }
 
@@ -107,14 +133,28 @@ class RobotServiceLocal {
     const stored = localStorage.getItem(this.familiasKey);
     if (stored) {
       try {
-        return JSON.parse(stored);
-      } catch {
+        const parsed = JSON.parse(stored);
+        // Validar que tenga las familias esperadas (4 familias)
+        if (!Array.isArray(parsed) || parsed.length !== 4 || !parsed[0]?.nombreFamilia) {
+          console.log('🔄 Reinicializando familias - datos incompletos o dañados');
+          console.log(`   - Es array: ${Array.isArray(parsed)}, Largo: ${parsed?.length}, Tiene nombreFamilia: ${parsed?.[0]?.nombreFamilia ? 'sí' : 'no'}`);
+          localStorage.removeItem(this.familiasKey);
+          localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
+          console.log('✅ Familias reininicializadas - Total:', FAMILIAS_INICIALES.length);
+          return FAMILIAS_INICIALES;
+        }
+        console.log(`📥 Familias cargadas desde localStorage: ${parsed.length} familias`);
+        return parsed;
+      } catch (err) {
+        console.log('🔄 Error parseando familias - reinicializando:', (err as any).message);
         localStorage.removeItem(this.familiasKey);
         localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
         return FAMILIAS_INICIALES;
       }
     }
+    console.log('📥 Familias NO encontradas en localStorage - inicializando con FAMILIAS_INICIALES...');
     localStorage.setItem(this.familiasKey, JSON.stringify(FAMILIAS_INICIALES));
+    console.log('✅ FAMILIAS_INICIALES almacenadas - Total:', FAMILIAS_INICIALES.length);
     return FAMILIAS_INICIALES;
   }
 
@@ -132,7 +172,8 @@ class RobotServiceLocal {
       const familias = this.getFamilias();
 
       console.log('📦 Total robots en BD:', robots.length);
-      console.log('📦 Filtros:', filtros);
+      console.log('📦 Filtros aplicados:', filtros);
+      console.log('📦 Primeros robots antes de filtros:', robots.slice(0, 2));
 
       if (filtros.region) {
         const before = robots.length;
@@ -200,10 +241,25 @@ class RobotServiceLocal {
 
   async listarFamilias() {
     try {
+      // Ensure robots are initialized
+      this.getRobots();
       const familias = this.getFamilias();
       const robots = this.getRobots();
 
       console.log('👨‍👩‍👧‍👦 Familias cargadas:', familias.length, familias);
+      console.log('🤖 Robots totales disponibles:', robots.length);
+
+      // Validar integridad de datos
+      if (robots.length === 0) {
+        console.error('❌ ERROR CRITICO: No hay robots cargados');
+      }
+      if (familias.length === 0) {
+        console.error('❌ ERROR CRITICO: No hay familias cargadas');
+      }
+
+      console.log('🤖 Estructura de primer robot:', robots[0]);
+      console.log('🤖 familiaIds únicos en robots:', [...new Set(robots.map(r => r.familiaId))]);
+      console.log('👨‍👩‍👧‍👦 IDs de familias:', familias.map(f => f.id));
 
       if (!familias || familias.length === 0) {
         console.warn('⚠️ ALERTA: getFamilias() devolvió array vacío, reinicializando...');
@@ -219,12 +275,30 @@ class RobotServiceLocal {
       }
 
       // Agregar conteo de robots a cada familia
-      return familias.map(f => ({
-        ...f,
-        _count: {
-          robots: robots.filter(r => r.familiaId === f.id).length,
-        },
-      }));
+      const familiasConConteo = familias.map(f => {
+        const matchingRobots = robots.filter(r => {
+          const match = r.familiaId === f.id || String(r.familiaId) === String(f.id);
+          return match;
+        });
+        const count = matchingRobots.length;
+        console.log(`📊 Familia "${f.nombreFamilia}"`);
+        console.log(`   - familiaId tipo: "${typeof f.id}" valor: "${f.id}"`);
+        console.log(`   - Robots encontrados: ${count}`);
+        if (count === 0 && robots.length > 0) {
+          console.log(`   - ALERTA: No se encontraron robots. Tipos familiaId: ${robots.slice(0, 2).map(r => `${typeof r.familiaId}:${r.familiaId}`).join(', ')}`);
+        } else if (matchingRobots.length > 0) {
+          console.log(`   - Ejemplos: ${matchingRobots.slice(0, 2).map(r => r.numeroSerie).join(', ')}`);
+        }
+        return {
+          ...f,
+          _count: {
+            robots: count,
+          },
+        };
+      });
+
+      console.log('✅ Familias con conteo enriquecidas:', familiasConConteo);
+      return familiasConConteo;
     } catch (error) {
       console.error('❌ Error en listarFamilias():', error);
       throw error;
@@ -238,6 +312,11 @@ class RobotServiceLocal {
     familias.push(nuevaFamilia);
     this.saveFamilias(familias);
     return nuevaFamilia;
+  }
+
+  // Método público para obtener robots (usado por otras páginas)
+  async obtenerTodosLosRobots() {
+    return this.getRobots();
   }
 }
 

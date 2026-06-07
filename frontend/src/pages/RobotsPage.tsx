@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { robotService } from '../services/robot.service'
+import { ubicacionService, Ubicacion } from '../services/ubicacion.service'
+import { movimientoService } from '../services/movimiento.service'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotification } from '../contexts/NotificationContext'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
+import { validateRobotForm, formatErrorMessage } from '../utils/validation'
 
 const estadoBadge: Record<string, string> = {
-  DISPONIBLE: 'bg-green-100 text-green-800',
-  EN_PRESTAMO: 'bg-blue-100 text-blue-800',
-  MANTENIMIENTO: 'bg-orange-100 text-orange-800',
-  RETIRADO: 'bg-gray-100 text-gray-800',
+  DISPONIBLE: 'badge-success',
+  EN_PRESTAMO: 'badge-info',
+  MANTENIMIENTO: 'badge-warning',
+  RETIRADO: 'badge-error',
 }
 
 export default function RobotsPage() {
+  const navigate = useNavigate()
   const { isAdmin, user } = useAuth()
   const { addNotification } = useNotification()
   const { currentRegion } = useRegionLanguage()
@@ -19,6 +24,7 @@ export default function RobotsPage() {
 
   const [robots, setRobots] = useState<any[]>([])
   const [familias, setFamilias] = useState<any[]>([])
+  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroFamilia, setFiltroFamilia] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
@@ -36,9 +42,10 @@ export default function RobotsPage() {
 
       console.log('Cargando robots con filtros:', filtros)
 
-      const [rs, fs] = await Promise.all([
+      const [rs, fs, ubs] = await Promise.all([
         robotService.listar(filtros),
         robotService.listarFamilias(),
+        ubicacionService.listar({ region: currentRegion as any }),
       ])
 
       console.log('Robots cargados:', rs.length, rs)
@@ -46,9 +53,15 @@ export default function RobotsPage() {
 
       setRobots(rs)
       setFamilias(fs)
+      setUbicaciones(ubs)
     } catch (err) {
       console.error(err)
-      addNotification('Error al cargar robots', 'error')
+      addNotification(
+        'No se pudieron cargar los robots. Intenta nuevamente',
+        'error',
+        4000,
+        '❌ Error al Cargar'
+      )
     } finally {
       setLoading(false)
     }
@@ -59,124 +72,200 @@ export default function RobotsPage() {
   }, [filtroFamilia, filtroEstado, currentRegion])
 
   const handleGuardar = async (data: any) => {
+    // Validar antes de enviar
+    const validation = validateRobotForm(data)
+    if (!validation.valid) {
+      const errores = Object.values(validation.errors).join(', ')
+      addNotification(`Validación fallida: ${errores}`, 'error')
+      return { validation }
+    }
+
     try {
       if (editing?.id) {
+        const ubicacionAnterior = editing.ubicacionActual || ''
         await robotService.actualizar(editing.id, data)
-        addNotification('Robot actualizado', 'success')
+
+        // Registrar movimiento de transferencia si cambió la ubicación
+        if (data.ubicacionActual && data.ubicacionActual !== ubicacionAnterior) {
+          const nombreDestino =
+            ubicaciones.find((u) => u.id === data.ubicacionActual)?.nombre || data.ubicacionActual
+          await movimientoService.registrar({
+            robotId: editing.id,
+            ubicacionOrigen: ubicacionAnterior,
+            ubicacionDestino: data.ubicacionActual,
+            tipo: 'Transferencia',
+            razon: `Transferencia a ${nombreDestino}`,
+            usuarioResponsable: {
+              id: user?.id || 'sistema',
+              nombreCompleto: user?.nombreCompleto || 'Sistema',
+              email: user?.email || '',
+            },
+            fechaMovimiento: new Date().toISOString(),
+          })
+          addNotification(`Robot actualizado y transferido a ${nombreDestino}`, 'success')
+        } else {
+          addNotification('Robot actualizado correctamente', 'success')
+        }
       } else {
         await robotService.crear(data)
-        addNotification('Robot creado', 'success')
+        addNotification('Robot creado correctamente', 'success')
       }
       setShowModal(false)
       setEditing(null)
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al guardar', 'error')
+      const errorMsg = formatErrorMessage(err)
+      addNotification(`Error al guardar: ${errorMsg}`, 'error')
     }
+  }
+
+  const getNombreUbicacion = (id?: string) => {
+    if (!id) return '-'
+    return ubicaciones.find((u) => u.id === id)?.nombre || id
   }
 
   const handleEliminar = async (id: string) => {
-    if (!confirm('¿Eliminar este robot? Esta acción no se puede deshacer.')) return
+    const robot = robots.find((r) => r.id === id)
+    if (!confirm(`¿Eliminar el robot ${robot?.numeroSerie}? Esta acción no se puede deshacer.`)) return
     try {
       await robotService.eliminar(id)
-      addNotification('Robot eliminado', 'success')
+      addNotification(
+        `Robot ${robot?.numeroSerie} eliminado del sistema`,
+        'success',
+        3000,
+        '✅ Robot Eliminado'
+      )
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al eliminar', 'error')
+      addNotification(
+        err.message || 'No se pudo eliminar el robot',
+        'error',
+        4000,
+        '❌ Error al Eliminar'
+      )
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Cargando robots...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 animate-fadeIn">
+      <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Inventario de Robots</h1>
-          <p className="text-gray-600 mt-1">{robots.length} robots en el sistema</p>
+          <h1 className="text-4xl font-bold gradient-text-primary">Inventario de Robots</h1>
+          <p className="text-gray-600 mt-3 font-medium">
+            <span className="text-lg font-bold text-gray-900">{robots.length}</span> robots en el sistema
+          </p>
         </div>
         {puedeEditar && (
           <button
             onClick={() => { setEditing(null); setShowModal(true) }}
-            className="bg-teradyne-secondary hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition"
+            className="btn-primary shadow-lg"
           >
-            + Nuevo Robot
+            <span>+</span> Nuevo Robot
           </button>
         )}
       </div>
 
-      <div className="flex gap-4 flex-wrap">
-        <select
-          value={filtroFamilia}
-          onChange={(e) => setFiltroFamilia(e.target.value)}
-          className="px-3 py-2 border rounded bg-white"
-        >
-          <option value="">Todas las familias</option>
-          {familias.map(f => <option key={f.id} value={f.id}>{f.nombreFamilia}</option>)}
-        </select>
-        <select
-          value={filtroEstado}
-          onChange={(e) => setFiltroEstado(e.target.value)}
-          className="px-3 py-2 border rounded bg-white"
-        >
-          <option value="">Todos los estados</option>
-          <option value="DISPONIBLE">Disponibles</option>
-          <option value="EN_PRESTAMO">En Préstamo</option>
-          <option value="MANTENIMIENTO">Mantenimiento</option>
-          <option value="RETIRADO">Retirados</option>
-        </select>
-      </div>
+      <div className="card-premium">
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 border-b border-blue-100 flex flex-wrap gap-4 items-center">
+          <div className="flex-1 min-w-xs">
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Familia</label>
+            <select
+              value={filtroFamilia}
+              onChange={(e) => setFiltroFamilia(e.target.value)}
+              className="input-field"
+            >
+              <option value="">Todas las familias</option>
+              {familias.map(f => <option key={f.id} value={f.id}>{f.nombreFamilia}</option>)}
+            </select>
+          </div>
+          <div className="flex-1 min-w-xs">
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Estado</label>
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="input-field"
+            >
+              <option value="">Todos los estados</option>
+              <option value="DISPONIBLE">✅ Disponibles</option>
+              <option value="EN_PRESTAMO">🤖 En Préstamo</option>
+              <option value="MANTENIMIENTO">🔧 Mantenimiento</option>
+              <option value="RETIRADO">📦 Retirados</option>
+            </select>
+          </div>
+        </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-gray-500">Cargando...</div>
-        ) : robots.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No hay robots registrados.
-            {puedeEditar && <div className="mt-2 text-sm">Crea uno nuevo con el botón de arriba.</div>}
+        {robots.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="text-5xl mb-4">🤖</div>
+            <p className="text-gray-600 font-medium mb-2">No hay robots registrados</p>
+            {puedeEditar && <p className="text-sm text-gray-500">Crea uno nuevo con el botón de arriba</p>}
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">N° Serie</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Modelo</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Familia</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Ubicación</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Estado</th>
-                {puedeEditar && <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">Acciones</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {robots.map(r => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-mono font-semibold text-gray-900">{r.numeroSerie}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{r.modelo || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{r.familia?.nombreFamilia}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{r.ubicacionActual || '-'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${estadoBadge[r.estado]}`}>
-                      {r.estado.replace('_', ' ')}
-                    </span>
-                  </td>
-                  {puedeEditar && (
-                    <td className="px-6 py-4 text-right text-sm space-x-2">
-                      <button
-                        onClick={() => { setEditing(r); setShowModal(true) }}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleEliminar(r.id)}
-                        className="text-red-600 hover:text-red-800 font-medium"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  )}
+          <div className="overflow-x-auto">
+            <table className="table-premium">
+              <thead>
+                <tr>
+                  <th>N° Serie</th>
+                  <th>Modelo</th>
+                  <th>Familia</th>
+                  <th>Ubicación</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {robots.map(r => (
+                  <tr key={r.id}>
+                    <td className="font-mono font-bold text-blue-700">{r.numeroSerie}</td>
+                    <td className="font-medium text-gray-900">{r.modelo || '-'}</td>
+                    <td className="text-gray-700">{r.familia?.nombreFamilia}</td>
+                    <td className="text-gray-700">{getNombreUbicacion(r.ubicacionActual)}</td>
+                    <td>
+                      <span className={estadoBadge[r.estado]}>
+                        {r.estado.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="text-right text-sm space-x-3">
+                      <button
+                        onClick={() => navigate(`/robots/${r.id}/movements`)}
+                        className="btn-ghost text-purple-600 hover:text-purple-700"
+                        title="Ver historial de movimientos"
+                      >
+                        📊
+                      </button>
+                      {puedeEditar && (
+                        <>
+                          <button
+                            onClick={() => { setEditing(r); setShowModal(true) }}
+                            className="btn-ghost text-blue-600 hover:text-blue-700"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleEliminar(r.id)}
+                            className="btn-ghost text-red-600 hover:text-red-700"
+                          >
+                            🗑️
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -184,6 +273,7 @@ export default function RobotsPage() {
         <RobotModal
           robot={editing}
           familias={familias}
+          ubicaciones={ubicaciones}
           region={currentRegion}
           onSave={handleGuardar}
           onClose={() => { setShowModal(false); setEditing(null) }}
@@ -193,7 +283,7 @@ export default function RobotsPage() {
   )
 }
 
-function RobotModal({ robot, familias, region, onSave, onClose }: any) {
+function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: any) {
   const [form, setForm] = useState({
     numeroSerie: robot?.numeroSerie || '',
     modelo: robot?.modelo || '',
@@ -202,100 +292,130 @@ function RobotModal({ robot, familias, region, onSave, onClose }: any) {
     ubicacionActual: robot?.ubicacionActual || '',
     region: robot?.region || region,
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.numeroSerie || !form.familiaId) {
-      alert('Número de serie y familia son requeridos')
+    const validation = validateRobotForm(form)
+    setErrors(validation.errors)
+
+    if (!validation.valid) {
       return
     }
-    onSave(form)
+
+    setSubmitting(true)
+    const result = await onSave(form)
+    setSubmitting(false)
+
+    if (result?.validation && !result.validation.valid) {
+      setErrors(result.validation.errors)
+    }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">
-            {robot?.id ? 'Editar Robot' : 'Nuevo Robot'}
+    <div className="modal-overlay flex items-center justify-center p-4">
+      <div className="modal-content w-full max-w-lg">
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 border-b border-blue-100">
+          <h2 className="text-2xl font-bold gradient-text-primary">
+            {robot?.id ? '✏️ Editar Robot' : '🤖 Nuevo Robot'}
           </h2>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Número de Serie *
-            </label>
+            <label className="form-label">Número de Serie *</label>
             <input
               type="text"
               value={form.numeroSerie}
-              onChange={(e) => setForm({ ...form, numeroSerie: e.target.value })}
+              onChange={(e) => {
+                setForm({ ...form, numeroSerie: e.target.value })
+                if (errors.numeroSerie) setErrors({ ...errors, numeroSerie: '' })
+              }}
               required
               disabled={!!robot?.id}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none disabled:bg-gray-100"
+              className={`input-field disabled:bg-gray-50 disabled:cursor-not-allowed ${
+                errors.numeroSerie ? 'border-red-500' : ''
+              }`}
             />
+            {errors.numeroSerie && (
+              <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                <span>⚠️</span> {errors.numeroSerie}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+            <div className="form-group">
+              <label className="form-label">Modelo</label>
               <input
                 type="text"
                 value={form.modelo}
                 onChange={(e) => setForm({ ...form, modelo: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                className="input-field"
                 placeholder="UR10e"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Familia *</label>
+            <div className="form-group">
+              <label className="form-label">Familia *</label>
               <select
                 value={form.familiaId}
-                onChange={(e) => setForm({ ...form, familiaId: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, familiaId: e.target.value })
+                  if (errors.familiaId) setErrors({ ...errors, familiaId: '' })
+                }}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                className={`input-field ${errors.familiaId ? 'border-red-500' : ''}`}
               >
                 <option value="">Selecciona familia</option>
                 {familias.map((f: any) => (
                   <option key={f.id} value={f.id}>{f.nombreFamilia}</option>
                 ))}
               </select>
+              {errors.familiaId && (
+                <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                  <span>⚠️</span> {errors.familiaId}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+            <div className="form-group">
+              <label className="form-label">Estado</label>
               <select
                 value={form.estado}
                 onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
+                className="input-field"
               >
-                <option value="DISPONIBLE">Disponible</option>
-                <option value="EN_PRESTAMO">En Préstamo</option>
-                <option value="MANTENIMIENTO">Mantenimiento</option>
-                <option value="RETIRADO">Retirado</option>
+                <option value="DISPONIBLE">✅ Disponible</option>
+                <option value="EN_PRESTAMO">🤖 En Préstamo</option>
+                <option value="MANTENIMIENTO">🔧 Mantenimiento</option>
+                <option value="RETIRADO">📦 Retirado</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
-              <input
-                type="text"
+            <div className="form-group">
+              <label className="form-label">Ubicación</label>
+              <select
                 value={form.ubicacionActual}
                 onChange={(e) => setForm({ ...form, ubicacionActual: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none"
-                placeholder="Almacén..."
-              />
+                className="input-field"
+              >
+                <option value="">Sin ubicación</option>
+                {(ubicaciones || []).map((u: any) => (
+                  <option key={u.id} value={u.id}>{u.nombre}</option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Región *</label>
+          <div className="form-group">
+            <label className="form-label">Región *</label>
             <select
               value={form.region}
               onChange={(e) => setForm({ ...form, region: e.target.value })}
               disabled={!!robot?.id}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-teradyne-secondary outline-none disabled:bg-gray-100"
+              className="input-field disabled:bg-gray-50 disabled:cursor-not-allowed"
             >
               <option value="">Selecciona región</option>
               <option value="MX">🇲🇽 México</option>
@@ -304,19 +424,30 @@ function RobotModal({ robot, familias, region, onSave, onClose }: any) {
             </select>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition"
+              disabled={submitting}
+              className="btn-secondary disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-teradyne-secondary hover:bg-blue-600 text-white rounded font-medium transition"
+              disabled={submitting}
+              className="btn-primary disabled:opacity-50 flex items-center gap-2"
             >
-              {robot?.id ? 'Guardar' : 'Crear'}
+              {submitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Guardando...
+                </>
+              ) : robot?.id ? (
+                '💾 Guardar'
+              ) : (
+                '✨ Crear'
+              )}
             </button>
           </div>
         </form>

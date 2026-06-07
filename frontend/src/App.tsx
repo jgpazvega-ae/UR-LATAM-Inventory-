@@ -4,6 +4,7 @@ import { RegionLanguageProvider } from './contexts/RegionLanguageContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import Layout from './components/Layout'
 import Notifications from './components/Notifications'
+import ErrorBoundary from './components/ErrorBoundary'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
@@ -15,6 +16,11 @@ import RobotsPage from './pages/RobotsPage'
 import ConfiguracionPage from './pages/ConfiguracionPage'
 import ReporteDemosPage from './pages/ReporteDemosPage'
 import GestionContraseñasPage from './pages/GestionContraseñasPage'
+import NotificacionesPage from './pages/NotificacionesPage'
+import UbicacionesPage from './pages/UbicacionesPage'
+import ReportsPage from './pages/ReportsPage'
+import RobotMovementsPage from './pages/RobotMovementsPage'
+import MaintenancePage from './pages/MaintenancePage'
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth()
@@ -24,35 +30,45 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
   return user ? children : <Navigate to="/login" />
 }
 
+// Usar BASE_URL de Vite (/ en dev, /UR-LATAM-Inventory-/ en GitHub Pages)
+const basename = ((import.meta as any).env?.BASE_URL || '/').replace(/\/$/, '') || '/'
+
 function App() {
   return (
-    <AuthProvider>
-      <RegionLanguageProvider>
-        <NotificationProvider>
-          <div className="w-full">
-            <Notifications />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
-                  <Route path="/" element={<DashboardPage />} />
-                  <Route path="/usuarios" element={<UsuariosPage />} />
-                  <Route path="/solicitudes" element={<SolicitudesPage />} />
-                  <Route path="/solicitudes/nueva" element={<NuevaSolicitudPage />} />
-                  <Route path="/solicitudes/:id" element={<SolicitudDetallePage />} />
-                  <Route path="/robots" element={<RobotsPage />} />
-                  <Route path="/configuracion" element={<ConfiguracionPage />} />
-                  <Route path="/reportes/demos" element={<ReporteDemosPage />} />
-                  <Route path="/gestion-contrasenas" element={<GestionContraseñasPage />} />
-                  <Route path="*" element={<Navigate to="/" />} />
-                </Route>
-              </Routes>
-            </BrowserRouter>
-          </div>
-        </NotificationProvider>
-      </RegionLanguageProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <RegionLanguageProvider>
+          <NotificationProvider>
+            <div className="w-full">
+              <Notifications />
+              <BrowserRouter basename={basename}>
+                <Routes>
+                  <Route path="/login" element={<ErrorBoundary><LoginPage /></ErrorBoundary>} />
+                  <Route path="/register" element={<ErrorBoundary><RegisterPage /></ErrorBoundary>} />
+                  <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
+                    <Route path="/" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
+                    <Route path="/notificaciones" element={<ErrorBoundary><NotificacionesPage /></ErrorBoundary>} />
+                    <Route path="/ubicaciones" element={<ErrorBoundary><UbicacionesPage /></ErrorBoundary>} />
+                    <Route path="/usuarios" element={<ErrorBoundary><UsuariosPage /></ErrorBoundary>} />
+                    <Route path="/solicitudes" element={<ErrorBoundary><SolicitudesPage /></ErrorBoundary>} />
+                    <Route path="/solicitudes/nueva" element={<ErrorBoundary><NuevaSolicitudPage /></ErrorBoundary>} />
+                    <Route path="/solicitudes/:id" element={<ErrorBoundary><SolicitudDetallePage /></ErrorBoundary>} />
+                    <Route path="/robots" element={<ErrorBoundary><RobotsPage /></ErrorBoundary>} />
+                    <Route path="/robots/:robotId/movements" element={<ErrorBoundary><RobotMovementsPage /></ErrorBoundary>} />
+                    <Route path="/mantenimiento" element={<ErrorBoundary><MaintenancePage /></ErrorBoundary>} />
+                    <Route path="/configuracion" element={<ErrorBoundary><ConfiguracionPage /></ErrorBoundary>} />
+                    <Route path="/reportes/demos" element={<ErrorBoundary><ReporteDemosPage /></ErrorBoundary>} />
+                    <Route path="/reportes" element={<ErrorBoundary><ReportsPage /></ErrorBoundary>} />
+                    <Route path="/gestion-contrasenas" element={<ErrorBoundary><GestionContraseñasPage /></ErrorBoundary>} />
+                    <Route path="*" element={<Navigate to="/" />} />
+                  </Route>
+                </Routes>
+              </BrowserRouter>
+            </div>
+          </NotificationProvider>
+        </RegionLanguageProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 

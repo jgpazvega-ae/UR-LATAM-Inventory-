@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { userService } from '../services/user.service'
-import api from '../services/api'
 
 export default function GestionContraseñasPage() {
   const [usuarios, setUsuarios] = useState<any[]>([])
@@ -34,11 +33,19 @@ export default function GestionContraseñasPage() {
     setSuccess('')
 
     try {
-      await api.post(`/usuarios/${usuarioId}/resetear-password`)
-      setSuccess(`Contraseña de ${nombreUsuario} ha sido reseteada`)
-      setTimeout(() => setSuccess(''), 3000)
+      // En modo demo, simulamos el reset directamente en localStorage
+      const usuarios = JSON.parse(localStorage.getItem('usuarios-demo') || '[]')
+      const index = usuarios.findIndex((u: any) => u.id === usuarioId)
+      if (index !== -1) {
+        usuarios[index].password = 'latamrules123'
+        localStorage.setItem('usuarios-demo', JSON.stringify(usuarios))
+        setSuccess(`Contraseña de ${nombreUsuario} reseteada a: latamrules123`)
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError('Usuario no encontrado')
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al resetear contraseña')
+      setError(err.message || 'Error al resetear contraseña')
     } finally {
       setResetandoId(null)
     }
