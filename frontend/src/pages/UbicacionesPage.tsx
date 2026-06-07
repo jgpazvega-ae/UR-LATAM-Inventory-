@@ -5,6 +5,7 @@ import { robotService } from '../services/robot.service'
 import { useAuth } from '../contexts/AuthContext'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
 import { useNotification } from '../contexts/NotificationContext'
+import { validateLocationForm, formatErrorMessage } from '../utils/validation'
 
 const iconoPorTipo = {
   Oficina: '🏢',
@@ -42,6 +43,8 @@ export default function UbicacionesPage() {
   const [filtro, setFiltro] = useState<'todas' | 'activas' | 'inactivas'>('activas')
   const [showModal, setShowModal] = useState(false)
   const [editando, setEditando] = useState<Ubicacion | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState({
     nombre: '',
     tipo: 'Oficina' as TipoUbicacion,
@@ -81,6 +84,7 @@ export default function UbicacionesPage() {
   }
 
   const handleOpenModal = (ubicacion?: Ubicacion) => {
+    setFormErrors({})
     if (ubicacion) {
       setEditando(ubicacion)
       setFormData({
@@ -107,7 +111,18 @@ export default function UbicacionesPage() {
     setShowModal(true)
   }
 
-  const handleSave = async () => {
+  const handleSave = async (validationErrors?: Record<string, string>) => {
+    // Validar antes de enviar
+    const validation = validateLocationForm(formData)
+    setFormErrors(validation.errors)
+
+    if (!validation.valid) {
+      const errores = Object.values(validation.errors).join(', ')
+      addNotification(`Validación fallida: ${errores}`, 'error')
+      return { validation }
+    }
+
+    setSubmitting(true)
     try {
       const data = {
         nombre: formData.nombre,
@@ -125,15 +140,18 @@ export default function UbicacionesPage() {
 
       if (editando) {
         await ubicacionService.actualizar(editando.id, data)
-        addNotification('Ubicación actualizada', 'success')
+        addNotification('Ubicación actualizada correctamente', 'success')
       } else {
         await ubicacionService.crear(data)
-        addNotification('Ubicación creada', 'success')
+        addNotification('Ubicación creada correctamente', 'success')
       }
       setShowModal(false)
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al guardar ubicación', 'error')
+      const errorMsg = formatErrorMessage(err)
+      addNotification(`Error al guardar: ${errorMsg}`, 'error')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -360,10 +378,18 @@ export default function UbicacionesPage() {
                     <input
                       type="email"
                       value={formData.contactoEmail}
-                      onChange={(e) => setFormData({ ...formData, contactoEmail: e.target.value })}
-                      className="input-field"
+                      onChange={(e) => {
+                        setFormData({ ...formData, contactoEmail: e.target.value })
+                        if (formErrors.contactoEmail) setFormErrors({ ...formErrors, contactoEmail: '' })
+                      }}
+                      className={`input-field ${formErrors.contactoEmail ? 'border-red-500' : ''}`}
                       placeholder="juan@empresa.com"
                     />
+                    {formErrors.contactoEmail && (
+                      <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                        <span>⚠️</span> {formErrors.contactoEmail}
+                      </p>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -371,10 +397,18 @@ export default function UbicacionesPage() {
                     <input
                       type="tel"
                       value={formData.contactoTelefono}
-                      onChange={(e) => setFormData({ ...formData, contactoTelefono: e.target.value })}
-                      className="input-field"
+                      onChange={(e) => {
+                        setFormData({ ...formData, contactoTelefono: e.target.value })
+                        if (formErrors.contactoTelefono) setFormErrors({ ...formErrors, contactoTelefono: '' })
+                      }}
+                      className={`input-field ${formErrors.contactoTelefono ? 'border-red-500' : ''}`}
                       placeholder="+55 1234 5678"
                     />
+                    {formErrors.contactoTelefono && (
+                      <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                        <span>⚠️</span> {formErrors.contactoTelefono}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -383,15 +417,24 @@ export default function UbicacionesPage() {
             <div className="flex gap-3 justify-end p-6 border-t border-gray-200 bg-gray-50">
               <button
                 onClick={() => setShowModal(false)}
-                className="btn-secondary"
+                disabled={submitting}
+                className="btn-secondary disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSave}
-                className="btn-primary"
+                disabled={submitting}
+                className="btn-primary disabled:opacity-50 flex items-center gap-2"
               >
-                💾 Guardar
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Guardando...
+                  </>
+                ) : (
+                  '💾 Guardar'
+                )}
               </button>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { movimientoService } from '../services/movimiento.service'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotification } from '../contexts/NotificationContext'
 import { useRegionLanguage } from '../contexts/RegionLanguageContext'
+import { validateRobotForm, formatErrorMessage } from '../utils/validation'
 
 const estadoBadge: Record<string, string> = {
   DISPONIBLE: 'badge-success',
@@ -65,7 +66,15 @@ export default function RobotsPage() {
     cargar()
   }, [filtroFamilia, filtroEstado, currentRegion])
 
-  const handleGuardar = async (data: any) => {
+  const handleGuardar = async (data: any, validationErrors?: Record<string, string>) => {
+    // Validar antes de enviar
+    const validation = validateRobotForm(data)
+    if (!validation.valid) {
+      const errores = Object.values(validation.errors).join(', ')
+      addNotification(`Validación fallida: ${errores}`, 'error')
+      return { validation }
+    }
+
     try {
       if (editing?.id) {
         const ubicacionAnterior = editing.ubicacionActual || ''
@@ -88,17 +97,20 @@ export default function RobotsPage() {
             },
             fechaMovimiento: new Date().toISOString(),
           })
+          addNotification(`Robot actualizado y transferido a ${nombreDestino}`, 'success')
+        } else {
+          addNotification('Robot actualizado correctamente', 'success')
         }
-        addNotification('Robot actualizado', 'success')
       } else {
         await robotService.crear(data)
-        addNotification('Robot creado', 'success')
+        addNotification('Robot creado correctamente', 'success')
       }
       setShowModal(false)
       setEditing(null)
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al guardar', 'error')
+      const errorMsg = formatErrorMessage(err)
+      addNotification(`Error al guardar: ${errorMsg}`, 'error')
     }
   }
 
@@ -264,14 +276,25 @@ function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: a
     ubicacionActual: robot?.ubicacionActual || '',
     region: robot?.region || region,
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.numeroSerie || !form.familiaId) {
-      alert('Número de serie y familia son requeridos')
+    const validation = validateRobotForm(form)
+    setErrors(validation.errors)
+
+    if (!validation.valid) {
       return
     }
-    onSave(form)
+
+    setSubmitting(true)
+    const result = await onSave(form, validation.errors)
+    setSubmitting(false)
+
+    if (result?.validation && !result.validation.valid) {
+      setErrors(result.validation.errors)
+    }
   }
 
   return (
@@ -288,11 +311,21 @@ function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: a
             <input
               type="text"
               value={form.numeroSerie}
-              onChange={(e) => setForm({ ...form, numeroSerie: e.target.value })}
+              onChange={(e) => {
+                setForm({ ...form, numeroSerie: e.target.value })
+                if (errors.numeroSerie) setErrors({ ...errors, numeroSerie: '' })
+              }}
               required
               disabled={!!robot?.id}
-              className="input-field disabled:bg-gray-50 disabled:cursor-not-allowed"
+              className={`input-field disabled:bg-gray-50 disabled:cursor-not-allowed ${
+                errors.numeroSerie ? 'border-red-500' : ''
+              }`}
             />
+            {errors.numeroSerie && (
+              <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                <span>⚠️</span> {errors.numeroSerie}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -310,15 +343,23 @@ function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: a
               <label className="form-label">Familia *</label>
               <select
                 value={form.familiaId}
-                onChange={(e) => setForm({ ...form, familiaId: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, familiaId: e.target.value })
+                  if (errors.familiaId) setErrors({ ...errors, familiaId: '' })
+                }}
                 required
-                className="input-field"
+                className={`input-field ${errors.familiaId ? 'border-red-500' : ''}`}
               >
                 <option value="">Selecciona familia</option>
                 {familias.map((f: any) => (
                   <option key={f.id} value={f.id}>{f.nombreFamilia}</option>
                 ))}
               </select>
+              {errors.familiaId && (
+                <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                  <span>⚠️</span> {errors.familiaId}
+                </p>
+              )}
             </div>
           </div>
 
@@ -371,15 +412,26 @@ function RobotModal({ robot, familias, ubicaciones, region, onSave, onClose }: a
             <button
               type="button"
               onClick={onClose}
-              className="btn-secondary"
+              disabled={submitting}
+              className="btn-secondary disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="btn-primary"
+              disabled={submitting}
+              className="btn-primary disabled:opacity-50 flex items-center gap-2"
             >
-              {robot?.id ? '💾 Guardar' : '✨ Crear'}
+              {submitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Guardando...
+                </>
+              ) : robot?.id ? (
+                '💾 Guardar'
+              ) : (
+                '✨ Crear'
+              )}
             </button>
           </div>
         </form>
