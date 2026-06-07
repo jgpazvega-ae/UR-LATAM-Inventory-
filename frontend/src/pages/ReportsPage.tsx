@@ -62,6 +62,7 @@ export default function ReportsPage() {
     setLoading(true)
     try {
       let data: ReportData
+      const nombreReporte = reportConfig[tipo]?.titulo || tipo
 
       switch (tipo) {
         case 'inventario':
@@ -84,9 +85,19 @@ export default function ReportsPage() {
       }
 
       setReports([data])
-      addNotification('Reporte generado exitosamente', 'success')
+      addNotification(
+        `${nombreReporte} generado con ${data.datos.length} registros`,
+        'success',
+        3000,
+        '📊 Reporte Generado'
+      )
     } catch (error: any) {
-      addNotification('Error al generar reporte: ' + error.message, 'error')
+      addNotification(
+        error.message || 'No se pudo generar el reporte',
+        'error',
+        4000,
+        '❌ Error al Generar'
+      )
       console.error('Error generando reporte:', error)
     } finally {
       setLoading(false)
@@ -96,9 +107,19 @@ export default function ReportsPage() {
   const descargarCSV = (report: ReportData) => {
     try {
       reportsService.descargarCSV(report)
-      addNotification('Reporte descargado como CSV', 'success')
+      addNotification(
+        `${report.titulo} descargado en formato CSV (${report.datos.length} registros)`,
+        'success',
+        3000,
+        '📥 Descarga Completada'
+      )
     } catch (error: any) {
-      addNotification('Error al descargar CSV', 'error')
+      addNotification(
+        error.message || 'No se pudo descargar el archivo CSV',
+        'error',
+        4000,
+        '❌ Error en Descarga'
+      )
     }
   }
 
@@ -106,9 +127,19 @@ export default function ReportsPage() {
     setGeneratingPDF(true)
     try {
       await reportsService.generarReportePDF(report)
-      addNotification('Reporte descargado como PDF', 'success')
+      addNotification(
+        `${report.titulo} descargado en formato PDF`,
+        'success',
+        3000,
+        '📥 Descarga Completada'
+      )
     } catch (error: any) {
-      addNotification('Error al descargar PDF', 'error')
+      addNotification(
+        error.message || 'No se pudo generar el archivo PDF',
+        'error',
+        4000,
+        '❌ Error en Descarga'
+      )
     } finally {
       setGeneratingPDF(false)
     }

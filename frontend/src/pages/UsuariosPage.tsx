@@ -45,6 +45,12 @@ export default function UsuariosPage() {
       setUsuarios(users)
     } catch (err) {
       console.error(err)
+      addNotification(
+        'No se pudieron cargar los usuarios',
+        'error',
+        4000,
+        '❌ Error al Cargar'
+      )
     } finally {
       setLoading(false)
     }
@@ -89,26 +95,52 @@ export default function UsuariosPage() {
 
       if (editing) {
         await userService.actualizar(editing.id, dataToSave)
-        addNotification('Usuario actualizado', 'success')
+        addNotification(
+          `Usuario ${formData.nombreCompleto} actualizado correctamente`,
+          'success',
+          3000,
+          '✅ Usuario Actualizado'
+        )
       } else {
         await userService.crear({ ...dataToSave, region: formData.region } as any)
-        addNotification('Usuario creado', 'success')
+        addNotification(
+          `Usuario ${formData.nombreCompleto} creado con rol ${formData.rol}`,
+          'success',
+          3000,
+          '✅ Usuario Creado'
+        )
       }
       setShowModal(false)
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al guardar usuario', 'error')
+      addNotification(
+        err.message || 'No se pudo guardar el usuario',
+        'error',
+        4000,
+        '❌ Error al Guardar'
+      )
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar este usuario?')) return
+    const user = usuarios.find((u) => u.id === id)
+    if (!confirm(`¿Eliminar el usuario ${user?.nombreCompleto}? Esta acción no se puede deshacer.`)) return
     try {
       await userService.eliminar(id)
-      addNotification('Usuario eliminado', 'success')
+      addNotification(
+        `Usuario ${user?.nombreCompleto} eliminado del sistema`,
+        'success',
+        3000,
+        '✅ Usuario Eliminado'
+      )
       cargar()
     } catch (err: any) {
-      addNotification(err.message || 'Error al eliminar usuario', 'error')
+      addNotification(
+        err.message || 'No se pudo eliminar el usuario',
+        'error',
+        4000,
+        '❌ Error al Eliminar'
+      )
     }
   }
 

@@ -64,6 +64,12 @@ export default function UbicacionesPage() {
       setRobots(robs)
     } catch (err) {
       console.error('Error cargando ubicaciones:', err)
+      addNotification(
+        'No se pudieron cargar las ubicaciones',
+        'error',
+        4000,
+        '❌ Error al Cargar'
+      )
     } finally {
       setLoading(false)
     }
