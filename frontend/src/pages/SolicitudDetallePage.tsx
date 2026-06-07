@@ -6,12 +6,12 @@ import { useAuth } from '../contexts/AuthContext'
 import { useNotification } from '../contexts/NotificationContext'
 
 const estadoBadge: Record<string, string> = {
-  PENDIENTE_APROBACION: 'bg-yellow-100 text-yellow-800',
-  APROBADO: 'bg-blue-100 text-blue-800',
-  RECHAZADO: 'bg-red-100 text-red-800',
-  ACTIVO: 'bg-green-100 text-green-800',
-  COMPLETADO: 'bg-gray-100 text-gray-800',
-  VENCIDO: 'bg-orange-100 text-orange-800',
+  PENDIENTE_APROBACION: 'badge-warning',
+  APROBADO: 'badge-info',
+  RECHAZADO: 'badge-error',
+  ACTIVO: 'badge-success',
+  COMPLETADO: 'badge-info',
+  VENCIDO: 'badge-warning',
 }
 
 const formatFecha = (fecha?: string) =>
